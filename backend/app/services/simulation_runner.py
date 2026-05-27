@@ -11,11 +11,14 @@ import threading
 import subprocess
 import signal
 import atexit
-from typing import Dict, Any, List, Optional, TextIO
+from typing import TYPE_CHECKING, Dict, Any, List, Optional, TextIO
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from queue import Queue
+
+if TYPE_CHECKING:
+    from ..storage.graph_storage import GraphStorage
 
 from ..utils.logger import get_logger
 from ..utils.validation import validate_simulation_id
@@ -375,8 +378,8 @@ class SimulationRunner:
                     try:
                         with open(fpath, 'w', encoding='utf-8') as f:
                             json.dump([], f)
-                    except Exception:
-                        pass
+                    except OSError as e:
+                        logger.debug(f"Could not clear {fname}: {e}")
 
         # Initialize run state
         time_config = config.get("time_config", {})
@@ -539,7 +542,7 @@ class SimulationRunner:
             
             # Save file handles for later closing
             cls._stdout_files[simulation_id] = main_log_file
-            cls._stderr_files[simulation_id] = None  # No longer need separate stderr
+            cls._stderr_files[simulation_id] = None  # stderr is merged into the main log
             
             state.process_pid = process.pid
             state.runner_status = RunnerStatus.RUNNING
@@ -724,8 +727,8 @@ class SimulationRunner:
                     if os.path.exists(main_log_path):
                         with open(main_log_path, 'r', encoding='utf-8') as f:
                             error_info = f.read()[-2000:]  # Take last 2000 characters
-                except Exception:
-                    pass
+                except (OSError, UnicodeDecodeError) as e:
+                    logger.debug(f"Could not read error info from {main_log_path}: {e}")
                 state.error = f"Process exit code: {exit_code}, error: {error_info}"
                 logger.error(f"Simulation failed: {simulation_id}, error={state.error}")
 
