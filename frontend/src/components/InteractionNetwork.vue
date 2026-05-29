@@ -393,8 +393,8 @@ const nodeRadius = (n) => {
 
 const nodeColor = (n) => {
   const colors = {
-    bullish: 'rgba(20,184,166,0.8)',
-    bearish: 'rgba(239,68,68,0.8)',
+    bullish: 'rgba(167,139,250,0.85)',
+    bearish: 'rgba(240,171,252,0.85)',
     neutral: 'rgba(148,163,184,0.8)',
   }
   return colors[n.stance] || colors.neutral
@@ -700,9 +700,9 @@ onBeforeUnmount(() => {
   border-radius: 50%;
 }
 
-.bullish-dot { background: rgba(20,184,166,0.8); }
+.bullish-dot { background: rgba(167,139,250,0.85); }
 .neutral-dot { background: rgba(148,163,184,0.8); }
-.bearish-dot { background: rgba(239,68,68,0.8); }
+.bearish-dot { background: rgba(240,171,252,0.85); }
 
 .legend-sep {
   color: rgba(244, 241, 255,0.15);

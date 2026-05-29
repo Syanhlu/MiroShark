@@ -62,11 +62,11 @@
           <line
             :x1="ML" :y1="yS(pct)"
             :x2="W - MR" :y2="yS(pct)"
-            stroke="rgba(10,10,10,0.06)" stroke-width="1"
+            stroke="rgba(244,241,255,0.06)" stroke-width="1"
           />
           <text
             :x="ML - 5" :y="yS(pct) + 4"
-            fill="rgba(10,10,10,0.35)" font-size="9"
+            fill="rgba(244,241,255,0.35)" font-size="9"
             font-family="monospace" text-anchor="end"
           >{{ pct }}%</text>
         </g>
@@ -74,8 +74,8 @@
         <!-- Stacked area: bearish (bottom layer, coral) -->
         <path
           :d="bearishPath"
-          fill="rgba(239,68,68,0.55)"
-          stroke="rgba(239,68,68,0.8)"
+          fill="rgba(240,171,252,0.55)"
+          stroke="rgba(240,171,252,0.8)"
           stroke-width="1"
         />
 
@@ -90,8 +90,8 @@
         <!-- Stacked area: bullish (top, teal) -->
         <path
           :d="bullishPath"
-          fill="rgba(20,184,166,0.55)"
-          stroke="rgba(20,184,166,0.8)"
+          fill="rgba(167,139,250,0.55)"
+          stroke="rgba(167,139,250,0.8)"
           stroke-width="1"
         />
 
@@ -100,13 +100,13 @@
           v-if="driftData.consensus_round != null"
           :x1="xS(driftData.consensus_round)" :y1="MT"
           :x2="xS(driftData.consensus_round)" :y2="H - MB"
-          stroke="rgba(10,10,10,0.5)" stroke-width="1.5"
+          stroke="rgba(244,241,255,0.5)" stroke-width="1.5"
           stroke-dasharray="4,3"
         />
         <text
           v-if="driftData.consensus_round != null"
           :x="xS(driftData.consensus_round) + 4" :y="MT + 12"
-          fill="rgba(10,10,10,0.5)" font-size="9" font-family="monospace"
+          fill="rgba(244,241,255,0.5)" font-size="9" font-family="monospace"
         >{{ $tr('consensus r', '共识 r') }}{{ driftData.consensus_round }}</text>
 
         <!-- Director event injection markers -->
@@ -129,14 +129,14 @@
           v-for="r in xTicks"
           :key="'xt' + r"
           :x="xS(r)" :y="H - MB + 13"
-          fill="rgba(10,10,10,0.35)" font-size="9"
+          fill="rgba(244,241,255,0.35)" font-size="9"
           font-family="monospace" text-anchor="middle"
         >{{ r }}</text>
 
         <!-- X axis title -->
         <text
           :x="ML + (W - ML - MR) / 2" :y="H - 2"
-          fill="rgba(10,10,10,0.3)" font-size="9"
+          fill="rgba(244,241,255,0.3)" font-size="9"
           font-family="monospace" text-anchor="middle"
         >{{ $tr('Round', '轮次') }}</text>
       </svg>
@@ -360,7 +360,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(10,10,10,0.08);
+  border-bottom: 1px solid rgba(244,241,255,0.08);
   flex-shrink: 0;
 }
 
@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
 
 .bd-export-btn {
   background: none;
-  border: 1px solid rgba(10,10,10,0.15);
+  border: 1px solid rgba(244,241,255,0.15);
   padding: 4px 10px;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -415,7 +415,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 16px;
   padding: 8px 16px;
-  border-bottom: 1px solid rgba(10,10,10,0.05);
+  border-bottom: 1px solid rgba(244,241,255,0.05);
   flex-shrink: 0;
 }
 
@@ -433,9 +433,9 @@ onBeforeUnmount(() => {
   height: 8px;
 }
 
-.bullish-dot { background: rgba(20,184,166,0.7); }
+.bullish-dot { background: rgba(167,139,250,0.7); }
 .neutral-dot  { background: rgba(148,163,184,0.7); }
-.bearish-dot  { background: rgba(239,68,68,0.7); }
+.bearish-dot  { background: rgba(240,171,252,0.7); }
 
 /* States */
 .bd-state {
@@ -496,7 +496,7 @@ onBeforeUnmount(() => {
   color: rgba(244, 241, 255,0.55);
   letter-spacing: 0.5px;
   line-height: 1.5;
-  border-top: 1px solid rgba(10,10,10,0.05);
+  border-top: 1px solid rgba(244,241,255,0.05);
   flex-shrink: 0;
 }
 

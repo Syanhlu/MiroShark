@@ -407,8 +407,12 @@ const toggleSelfLoop = (id) => {
 const entityTypes = computed(() => {
   if (!props.graphData?.nodes) return []
   const typeMap = {}
-  // Aesthetic color palette
-  const colors = ['#a78bfa', '#c4b5fd', '#f4f1ff', '#FFB347', '#FF4444', '#FF8C42', '#2D9B5E', '#D45B1A', '#7A7A7A', '#B8522E']
+  // Categorical entity-type palette. Needs 10 distinguishable hues, but
+  // tuned to the space-violet theme: violets/white lead (the most common
+  // types), then cool accents (fuchsia, sky, teal, green) with a single
+  // warm amber + rose and a neutral slate — no muddy oranges/browns, which
+  // clashed with the rest of the UI.
+  const colors = ['#a78bfa', '#c4b5fd', '#f4f1ff', '#f0abfc', '#38bdf8', '#5eead4', '#4ade80', '#fbbf24', '#94a3b8', '#fb7185']
   
   props.graphData.nodes.forEach(node => {
     const type = node.labels?.find(l => l !== 'Entity') || 'Entity'

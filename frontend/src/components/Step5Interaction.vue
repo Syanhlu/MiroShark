@@ -2449,11 +2449,12 @@ watch(() => props.simulationId, (newId) => {
   font-size: 14px;
   font-family: var(--font-mono);
   font-weight: 600;
-  color: #110a26;
-  background: #f4f1ff;
+  color: #f8f5ff;
+  background: linear-gradient(180deg, #6a4ad6 0%, #4922b8 45%, #2a118a 55%, #4f2dc4 100%);
   border: none;
+  border-radius: 9999px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2461,23 +2462,32 @@ watch(() => props.simulationId, (newId) => {
   margin-top: 22px;
   text-transform: uppercase;
   letter-spacing: 3px;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 10px 24px -10px rgba(139,92,246,0.6);
 }
 
 .survey-submit-btn:hover:not(:disabled) {
-  background: rgba(10,10,10,0.7);
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, #7d5ee8 0%, #5728d4 45%, #3414a3 55%, #5e3bde 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    0 14px 30px -10px rgba(139,92,246,0.85);
 }
 
 .survey-submit-btn:disabled {
-  background: rgba(10,10,10,0.12);
-  color: rgba(244, 241, 255,0.4);
+  background: linear-gradient(180deg, rgba(40,30,70,0.4) 0%, rgba(18,12,38,0.6) 100%);
+  color: rgba(228,222,255,0.35);
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .loading-spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(250, 250, 250, 0.3);
-  border-top-color: #110a26;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #f8f5ff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

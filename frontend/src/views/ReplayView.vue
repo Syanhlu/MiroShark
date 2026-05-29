@@ -584,12 +584,15 @@ onUnmounted(() => {
 
 /* Playback Bar */
 .playback-bar {
-  background: #f4f1ff;
+  background: linear-gradient(180deg, rgba(20,14,42,0.92) 0%, rgba(8,5,20,0.96) 100%);
   padding: 12px 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-bottom: 2px solid rgba(10,10,10,0.08);
+  border-bottom: 1px solid rgba(167,139,250,0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px -16px rgba(0,0,0,0.6);
   z-index: 10;
 }
 
@@ -614,7 +617,7 @@ onUnmounted(() => {
 }
 
 .control-btn.play:hover {
-  background: #E05A10;
+  background: #c4b5fd;
 }
 
 .speed-controls {
@@ -798,7 +801,7 @@ onUnmounted(() => {
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgba(10,10,10,0.08);
+  background: rgba(167,139,250,0.18);
   transform: translateX(-50%);
 }
 

@@ -404,7 +404,7 @@ onMounted(() => { if (props.visible) load() })
 }
 
 .demo-error-state {
-  color: rgba(239,68,68,0.8);
+  color: rgba(240,171,252,0.8);
 }
 
 .demo-hint {
@@ -487,9 +487,9 @@ onMounted(() => { if (props.visible) load() })
   border-radius: 50%;
 }
 
-.bullish-dot { background: rgba(20,184,166,0.8); }
+.bullish-dot { background: rgba(167,139,250,0.8); }
 .neutral-dot { background: rgba(148,163,184,0.8); }
-.bearish-dot { background: rgba(239,68,68,0.8); }
+.bearish-dot { background: rgba(240,171,252,0.8); }
 
 .legend-sep {
   color: rgba(244, 241, 255,0.15);
@@ -545,9 +545,9 @@ onMounted(() => { if (props.visible) load() })
   transition: width 0.25s ease;
 }
 
-.stance-bullish { background: rgba(20,184,166,0.75); }
+.stance-bullish { background: rgba(167,139,250,0.75); }
 .stance-neutral { background: rgba(148,163,184,0.55); }
-.stance-bearish { background: rgba(239,68,68,0.75); }
+.stance-bearish { background: rgba(240,171,252,0.75); }
 
 .demo-metrics {
   display: flex;
@@ -576,8 +576,8 @@ onMounted(() => { if (props.visible) load() })
   letter-spacing: 0.5px;
 }
 
-.stance-val-bullish { color: rgba(13,148,136,0.95); }
-.stance-val-bearish { color: rgba(220,38,38,0.95); }
+.stance-val-bullish { color: rgba(196,181,253,0.95); }
+.stance-val-bearish { color: rgba(240,171,252,0.95); }
 .stance-val-neutral { color: rgba(100,116,139,0.9); }
 
 .demo-footer-hint {
