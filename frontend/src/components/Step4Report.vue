@@ -3425,18 +3425,28 @@ watch(() => props.reportId, (newId) => {
   padding: 11px 22px;
   font-size: 14px;
   font-family: var(--font-mono);
-  font-weight: 600;
-  color: #110a26;
-  background: #f4f1ff;
+  font-weight: 700;
+  color: #f8f5ff;
+  background: linear-gradient(180deg, #6a4ad6 0%, #4922b8 45%, #2a118a 55%, #4f2dc4 100%);
   border: none;
+  border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-transform: uppercase;
   letter-spacing: 3px;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.4);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    0 14px 32px -10px rgba(139,92,246,0.6);
 }
 
 .next-step-btn:hover {
-  background: rgba(10,10,10,0.7);
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    0 20px 40px -10px rgba(139,92,246,0.75);
 }
 
 .next-step-btn svg {
@@ -3460,21 +3470,22 @@ watch(() => props.reportId, (newId) => {
   justify-content: center;
   gap: 6px;
   flex: 1;
-  padding: 10px 12px;
+  padding: 10px 14px;
   font-size: 12px;
-  font-weight: 500;
-  color: #6B7280;
-  background: #F9FAFB;
-  border: 1px solid #E5E7EB;
-  border-radius: 6px;
+  font-weight: 600;
+  color: #ece8ff;
+  background: linear-gradient(180deg, rgba(70,55,120,0.5) 0%, rgba(20,14,42,0.75) 100%);
+  border: 1px solid rgba(167,139,250,0.28);
+  border-radius: 9999px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
 }
 
 .export-btn:hover:not(:disabled) {
-  color: #374151;
-  background: #F3F4F6;
-  border-color: #D1D5DB;
+  color: #ffffff;
+  border-color: rgba(167,139,250,0.55);
+  transform: translateY(-1px);
 }
 
 .export-btn:disabled {
@@ -3493,10 +3504,10 @@ watch(() => props.reportId, (newId) => {
   padding: 10px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: #a78bfa;
-  background: #FFF7F2;
-  border: 1px solid #FFD9C2;
-  border-radius: 6px;
+  color: #c4b5fd;
+  background: linear-gradient(180deg, rgba(80,60,140,0.4) 0%, rgba(28,18,58,0.6) 100%);
+  border: 1px solid rgba(167,139,250,0.35);
+  border-radius: 9999px;
   cursor: pointer;
   transition: all 0.2s ease;
   text-transform: uppercase;
@@ -3504,9 +3515,9 @@ watch(() => props.reportId, (newId) => {
 }
 
 .regenerate-btn:hover:not(:disabled) {
-  color: #110a26;
-  background: #a78bfa;
-  border-color: #a78bfa;
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(96,72,160,0.55) 0%, rgba(36,24,72,0.7) 100%);
+  border-color: rgba(167,139,250,0.6);
 }
 
 .regenerate-btn:disabled {
@@ -5183,11 +5194,11 @@ watch(() => props.reportId, (newId) => {
 
 /* Console Logs - consistent with Step3Simulation.vue */
 .console-logs {
-  background: #f4f1ff;
-  color: rgba(244, 241, 255,0.2);
+  background: linear-gradient(180deg, rgba(20,14,42,0.95) 0%, rgba(8,5,22,0.97) 100%);
+  color: rgba(228,222,255,0.75);
   padding: 22px;
   font-family: var(--font-mono);
-  border-top: 2px solid rgba(10,10,10,0.7);
+  border-top: 1px solid rgba(167,139,250,0.25);
   flex-shrink: 0;
 }
 

@@ -2140,7 +2140,7 @@ watch(() => props.simulationId, (newId) => {
 /* Chat Input */
 .chat-input-area {
   padding: 22px;
-  border-top: 2px solid rgba(10,10,10,0.12);
+  border-top: 1px solid rgba(167,139,250,0.18);
   display: flex;
   gap: 11px;
   align-items: flex-end;
@@ -2148,19 +2148,24 @@ watch(() => props.simulationId, (newId) => {
 
 .chat-input {
   flex: 1;
-  padding: 11px 22px;
+  padding: 12px 18px;
   font-size: 14px;
-  border: 2px solid rgba(10,10,10,0.08);
+  color: #f4f1ff;
+  border: 1px solid rgba(167,139,250,0.28);
+  border-radius: 14px;
   resize: none;
   font-family: inherit;
   line-height: 1.5;
-  transition: border-color 0.2s ease;
-  background: #110a26;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(180deg, rgba(22,16,46,0.85) 0%, rgba(8,5,22,0.95) 100%);
 }
+
+.chat-input::placeholder { color: rgba(228,222,255,0.4); }
 
 .chat-input:focus {
   outline: none;
-  border-color: #a78bfa;
+  border-color: rgba(167,139,250,0.7);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
 }
 
 .chat-input:disabled {
@@ -2171,23 +2176,31 @@ watch(() => props.simulationId, (newId) => {
 .send-btn {
   width: 44px;
   height: 44px;
-  background: #f4f1ff;
-  color: #110a26;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #6a4ad6 0%, #4922b8 45%, #2a118a 55%, #4f2dc4 100%);
+  color: #f8f5ff;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 8px 22px -10px rgba(139,92,246,0.7);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .send-btn:hover:not(:disabled) {
-  background: rgba(10,10,10,0.7);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    0 12px 28px -10px rgba(139,92,246,0.85);
 }
 
 .send-btn:disabled {
-  background: rgba(10,10,10,0.12);
-  color: rgba(244, 241, 255,0.4);
+  background: linear-gradient(180deg, rgba(40,30,70,0.4) 0%, rgba(18,12,38,0.6) 100%);
+  color: rgba(228,222,255,0.35);
   cursor: not-allowed;
 }
 
@@ -2407,14 +2420,22 @@ watch(() => props.simulationId, (newId) => {
 /* Survey Input */
 .survey-input {
   width: 100%;
-  padding: 11px 22px;
+  padding: 12px 18px;
   font-size: 14px;
-  border: 2px solid rgba(10,10,10,0.08);
+  color: #f4f1ff;
+  border: 1px solid rgba(167,139,250,0.28);
+  border-radius: 14px;
   resize: none;
   font-family: inherit;
   line-height: 1.5;
-  transition: border-color 0.2s ease;
-  background: #110a26;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(180deg, rgba(22,16,46,0.85) 0%, rgba(8,5,22,0.95) 100%);
+}
+.survey-input::placeholder { color: rgba(228,222,255,0.4); }
+.survey-input:focus {
+  outline: none;
+  border-color: rgba(167,139,250,0.7);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
 }
 
 .survey-input:focus {

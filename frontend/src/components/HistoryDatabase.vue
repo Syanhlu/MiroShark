@@ -1366,7 +1366,7 @@ onUnmounted(() => {
 
 /* Feature colors - design system */
 .status-icon:nth-child(1).available { color: #a78bfa; } /* Graph Build - Orange */
-.status-icon:nth-child(2).available { color: #FFB347; } /* Agent Setup - Amber */
+.status-icon:nth-child(2).available { color: #c4b5fd; } /* Agent Setup */
 .status-icon:nth-child(3).available { color: #c4b5fd; } /* Analysis Report - Green */
 
 .status-icon.unavailable {
@@ -1404,8 +1404,9 @@ onUnmounted(() => {
   max-height: 110px;
   margin-bottom: 11px;
   padding: 8px 10px;
-  background: #1a0f3a;
-  border: 1px solid rgba(10, 10, 10, 0.08);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(40,30,70,0.5) 0%, rgba(20,14,42,0.65) 100%);
+  border: 1px solid rgba(167, 139, 250, 0.18);
   overflow: hidden;
 }
 
@@ -1424,7 +1425,8 @@ onUnmounted(() => {
   font-family: var(--font-mono);
   font-size: 11px;
   color: rgba(244, 241, 255, 0.5);
-  background: rgba(250, 250, 250, 0.5);
+  background: rgba(167, 139, 250, 0.12);
+  border-radius: 9999px;
   letter-spacing: 3px;
   text-transform: uppercase;
 }
@@ -1433,15 +1435,15 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 6px;
-  background: rgba(250, 250, 250, 0.7);
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(80,60,140,0.32) 0%, rgba(28,18,58,0.5) 100%);
   transition: all 0.2s ease;
 }
 
 .file-item:hover {
-  background: #110a26;
+  background: linear-gradient(180deg, rgba(96,72,160,0.45) 0%, rgba(36,24,72,0.6) 100%);
   transform: translateX(2px);
-  border-color: rgba(244, 241, 255, 0.08);
 }
 
 /* Minimal file tag style - flat, no rounded corners */
@@ -1476,7 +1478,7 @@ onUnmounted(() => {
 .file-name {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: rgba(244, 241, 255, 0.5);
+  color: rgba(244, 241, 255, 0.8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1976,7 +1978,7 @@ onUnmounted(() => {
 }
 
 .modal-btn.btn-project .btn-icon { color: #a78bfa; }
-.modal-btn.btn-simulation .btn-icon { color: #FFB347; }
+.modal-btn.btn-simulation .btn-icon { color: #a78bfa; }
 .modal-btn.btn-simrun .btn-icon { color: #a78bfa; }
 .modal-btn.btn-replay .btn-icon { color: #a78bfa; }
 .modal-btn.btn-report .btn-icon { color: #c4b5fd; }
@@ -2028,10 +2030,10 @@ onUnmounted(() => {
 
 .compare-select-btn {
   padding: 2px 8px;
-  border: 1px solid rgba(10,10,10,0.2);
+  border: 1px solid rgba(167,139,250,0.3);
   background: transparent;
-  color: rgba(244, 241, 255,0.4);
-  border-radius: 3px;
+  color: rgba(244, 241, 255,0.6);
+  border-radius: 9999px;
   cursor: pointer;
   font-size: 11px;
   font-family: 'Space Mono', monospace;
@@ -2073,9 +2075,9 @@ onUnmounted(() => {
 
 .embed-trigger-btn {
   padding: 8px 22px;
-  border: 1px solid rgba(234, 88, 12, 0.45);
-  background: rgba(234, 88, 12, 0.06);
-  color: #EA580C;
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.08);
+  color: #c4b5fd;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -2085,8 +2087,9 @@ onUnmounted(() => {
 }
 
 .embed-trigger-btn:hover {
-  border-color: #EA580C;
-  background: rgba(234, 88, 12, 0.12);
+  border-color: rgba(167, 139, 250, 0.7);
+  background: rgba(167, 139, 250, 0.16);
+  color: #ffffff;
 }
 
 /* ===== Fork section in modal ===== */
@@ -2316,9 +2319,9 @@ onUnmounted(() => {
 }
 .resolve-trigger-btn {
   padding: 8px 22px;
-  border: 1px solid rgba(234, 88, 12, 0.45);
-  background: rgba(234, 88, 12, 0.06);
-  color: #EA580C;
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.08);
+  color: #c4b5fd;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -2327,8 +2330,9 @@ onUnmounted(() => {
   transition: all 0.2s ease;
 }
 .resolve-trigger-btn:hover {
-  border-color: #EA580C;
-  background: rgba(234, 88, 12, 0.12);
+  border-color: rgba(167, 139, 250, 0.7);
+  background: rgba(167, 139, 250, 0.16);
+  color: #ffffff;
 }
 
 .resolve-form {
@@ -2624,8 +2628,9 @@ onUnmounted(() => {
   align-items: center;
   margin-top: 12px;
   padding: 14px 16px;
-  background: #fff;
-  border: 1px solid rgba(10,10,10,0.06);
+  background: linear-gradient(180deg, rgba(40,30,70,0.55) 0%, rgba(20,14,42,0.7) 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
 }
 
 .quality-health-badge {

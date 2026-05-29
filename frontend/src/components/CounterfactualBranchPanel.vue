@@ -268,8 +268,9 @@ onMounted(() => {
   font-family: var(--font-mono);
   font-size: 12px;
   padding: 6px 10px;
-  border: 1px solid rgba(10, 10, 10, 0.12);
-  background: #fff;
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(22,16,46,0.85) 0%, rgba(8,5,22,0.95) 100%);
   color: var(--foreground);
   outline: none;
   flex: 1;

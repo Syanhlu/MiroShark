@@ -3,7 +3,10 @@
     <!-- Header -->
     <header class="app-header">
       <div class="header-left">
-        <div class="brand" @click="router.push('/')">MIROSHARK</div>
+        <div class="brand" @click="router.push('/')">
+          <img src="/shark.webp" alt="" class="brand-mark" />
+          <span>MiroShark</span>
+        </div>
       </div>
 
       <div class="header-center">
@@ -513,13 +516,24 @@ onUnmounted(() => {
 }
 
 .brand {
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 18px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: #f4f1ff;
   cursor: pointer;
-  color: #110a26;
+  transition: color 180ms ease;
+}
+.brand:hover { color: #c4b5fd; }
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(167, 139, 250, 0.5));
 }
 
 .back-btn {

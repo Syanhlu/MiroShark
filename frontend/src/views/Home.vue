@@ -1,9 +1,7 @@
 <template>
   <div class="ms-home">
-    <!-- Deep-space background — scoped to this view only, doesn't touch
-         the global App.vue theme. -->
-    <div class="ms-space-bg" aria-hidden></div>
-    <div class="ms-space-stars" aria-hidden></div>
+    <!-- Deep-space background + star field now live globally in App.vue
+         (.space-bg / .space-stars) so every route shares them. -->
 
     <!-- ── Top Navigation ── -->
     <nav class="ms-nav">
@@ -20,7 +18,9 @@
         </a>
         <LocaleToggle />
         <button class="ms-nav-icon" @click="settingsOpen = true" :title="$tr('Settings', '设置')" aria-label="Settings">
-          ⚙
+          <svg viewBox="0 0 24 24" class="ms-nav-svg" fill="currentColor" aria-hidden="true">
+            <path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.8 7.8 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7.6 7.6 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z" />
+          </svg>
         </button>
       </div>
     </nav>
@@ -137,7 +137,9 @@
         <section class="ms-console-wrap">
           <!-- Pre-fill banner -->
           <div v-if="prefillBannerVisible" class="ms-prefill" role="status">
-            <span class="ms-prefill-icon" aria-hidden>🔗</span>
+            <svg class="ms-prefill-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12Zm5.1 1h6v-2H9v2Zm8-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10Z" />
+            </svg>
             <span class="ms-prefill-text">{{ prefillBannerCopy }}</span>
             <button class="ms-prefill-close" :title="$tr('Dismiss', '关闭')" @click="dismissPrefillBanner" aria-label="Dismiss">×</button>
           </div>
@@ -174,7 +176,9 @@
                 </div>
                 <ul v-else class="ms-file-list">
                   <li v-for="(file, i) in files" :key="i" class="ms-file">
-                    <span class="ms-file-icon" aria-hidden>📄</span>
+                    <svg class="ms-file-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M6 2h8l4 4v16H6V2zm7 1.5V7h3.5L13 3.5z" />
+                    </svg>
                     <span class="ms-file-name">{{ file.name }}</span>
                     <button @click.stop="removeFile(i)" class="ms-x" aria-label="Remove">×</button>
                   </li>
@@ -307,8 +311,10 @@
                   :title="$tr('Copy a URL that drops a reader into this pre-filled form', '复制可让读者直接进入此预填表单的链接')"
                   @click="copyScenarioShareLink"
                 >
-                  <span aria-hidden>🔗</span>
-                  <span v-if="shareLinkCopied">✓ {{ $tr('Link copied', '链接已复制') }}</span>
+                  <svg viewBox="0 0 24 24" class="ms-share-svg" fill="currentColor" aria-hidden="true">
+                    <path d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12Zm5.1 1h6v-2H9v2Zm8-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10Z" />
+                  </svg>
+                  <span v-if="shareLinkCopied">{{ $tr('Link copied', '链接已复制') }}</span>
                   <span v-else>{{ $tr('Share as link', '分享为链接') }}</span>
                 </button>
                 <span class="ms-share-hint">
@@ -720,58 +726,16 @@ const copyScenarioShareLink = async () => {
   position: relative;
   min-height: 100vh;
   color: #f4f1ff;
-  font-family: 'Geist', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
-  /* Solid dark base so the whole page reads dark even where the
-     fixed gradients tile below the fold. The radial-gradient layers
-     stack on top via .ms-space-bg. */
-  background:
-    radial-gradient(ellipse 60% 50% at 20% 110%, rgba(56, 30, 110, 0.35), transparent 70%),
-    radial-gradient(ellipse 60% 50% at 80% 130%, rgba(150, 80, 230, 0.2), transparent 70%),
-    linear-gradient(180deg, #050210 0%, #0a0420 45%, #06021a 80%, #02010a 100%);
+  /* Background + star field are global now (App.vue .space-bg /
+     .space-stars), so this container stays transparent and lets
+     the shared deep-space layers show through. */
+  background: transparent;
 }
 
-/* Hero halo — fixed so it stays glued to the top while you scroll. */
-.ms-space-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 55% 45% at 50% 25%, rgba(139, 92, 246, 0.55), transparent 65%),
-    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(76, 29, 149, 0.35), transparent 70%),
-    radial-gradient(ellipse 35% 30% at 85% 20%, rgba(150, 80, 230, 0.35), transparent 70%);
-  mix-blend-mode: screen;
-  opacity: 0.9;
-}
-
-.ms-space-stars {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,1), transparent 50%),
-    radial-gradient(1px 1px at 78% 9%, rgba(255,255,255,0.9), transparent 50%),
-    radial-gradient(1.5px 1.5px at 33% 72%, rgba(255,255,255,1), transparent 50%),
-    radial-gradient(1px 1px at 62% 38%, rgba(220,220,255,0.85), transparent 50%),
-    radial-gradient(1px 1px at 88% 56%, rgba(255,255,255,0.95), transparent 50%),
-    radial-gradient(1.5px 1.5px at 22% 88%, rgba(255,240,255,0.75), transparent 50%),
-    radial-gradient(1px 1px at 7% 42%, rgba(255,255,255,0.65), transparent 50%),
-    radial-gradient(1px 1px at 49% 14%, rgba(255,255,255,1), transparent 50%),
-    radial-gradient(1px 1px at 92% 82%, rgba(255,255,255,0.75), transparent 50%),
-    radial-gradient(1.5px 1.5px at 41% 51%, rgba(255,255,255,0.65), transparent 50%),
-    radial-gradient(1px 1px at 67% 91%, rgba(220,220,255,0.75), transparent 50%),
-    radial-gradient(1px 1px at 17% 63%, rgba(255,255,255,0.65), transparent 50%),
-    radial-gradient(1px 1px at 55% 78%, rgba(255,255,255,0.8), transparent 50%),
-    radial-gradient(1px 1px at 73% 24%, rgba(255,255,255,0.7), transparent 50%);
-  animation: ms-twinkle 6s ease-in-out infinite alternate;
-}
-
-@keyframes ms-twinkle { from { opacity: 0.55 } to { opacity: 1 } }
-
-/* All page content sits above the fixed bg/stars layers. */
+/* All page content sits above the global fixed bg/stars layers. */
 .ms-nav, .ms-main { position: relative; z-index: 1; }
 
 /* ── Top Nav ── */
@@ -845,6 +809,7 @@ const copyScenarioShareLink = async () => {
   transform: translateY(-1px);
 }
 .ms-nav-arrow { opacity: 0.7; }
+.ms-nav-svg { width: 18px; height: 18px; display: block; }
 
 /* ── Hero ── */
 .ms-main { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem 5rem; }
@@ -1272,7 +1237,9 @@ const copyScenarioShareLink = async () => {
   color: #ece8ff;
   font-size: 0.88rem;
 }
-.ms-prefill-icon { font-size: 0.95rem; }
+.ms-prefill-icon { width: 16px; height: 16px; flex: none; color: #c4b5fd; }
+.ms-file-icon { width: 18px; height: 18px; flex: none; color: #c4b5fd; }
+.ms-share-svg { width: 15px; height: 15px; display: block; }
 .ms-prefill-text { flex: 1; line-height: 1.4; }
 .ms-prefill-close {
   background: transparent;
@@ -1607,6 +1574,14 @@ const copyScenarioShareLink = async () => {
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.06),
     0 20px 48px -16px rgba(0,0,0,0.8);
+}
+
+/* When a section's component renders nothing (e.g. HistoryDatabase with no
+   local run history → only a v-if comment node remains), :empty matches —
+   CSS ignores comment nodes — so the bordered wrapper collapses instead of
+   showing an empty box. */
+.ms-section:empty {
+  display: none;
 }
 
 @media (max-width: 1023px) {

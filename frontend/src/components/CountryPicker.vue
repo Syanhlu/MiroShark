@@ -174,11 +174,11 @@ watch(() => props.modelValue?.country, (next) => {
 }
 .cp-select {
   flex: 0 1 220px;
-  background: var(--color-bg-2, #0e0f12);
-  color: var(--color-fg, #d8dde6);
-  border: 1px solid var(--color-border, #2a2d34);
-  border-radius: 4px;
-  padding: 4px 8px;
+  background: linear-gradient(180deg, rgba(40,30,70,0.6) 0%, rgba(18,12,38,0.85) 100%);
+  color: #f4f1ff;
+  border: 1px solid rgba(167,139,250,0.28);
+  border-radius: 9999px;
+  padding: 6px 14px;
   font-size: 13px;
 }
 .cp-select:disabled { opacity: 0.6; cursor: not-allowed; }

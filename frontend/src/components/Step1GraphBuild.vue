@@ -507,10 +507,12 @@ watch(() => props.systemLogs.length, () => {
     left: 22px;
     right: 22px;
     bottom: 22px;
-    background: rgba(250, 250, 250, 0.98);
-    backdrop-filter: blur(4px);
+    background: linear-gradient(180deg, rgba(24,16,50,0.98) 0%, rgba(10,6,24,0.98) 100%);
+    backdrop-filter: blur(10px);
     z-index: 10;
-    border: 2px solid rgba(10,10,10,0.08);
+    border: 1px solid rgba(167,139,250,0.25);
+    border-radius: 16px;
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,0.85);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -572,11 +574,11 @@ watch(() => props.systemLogs.length, () => {
 
 .detail-desc {
     font-size: 12px;
-    color: rgba(244, 241, 255,0.6);
+    color: rgba(244, 241, 255,0.8);
     line-height: 1.5;
     margin-bottom: 22px;
     padding-bottom: 11px;
-    border-bottom: 1px dashed rgba(10,10,10,0.08);
+    border-bottom: 1px dashed rgba(167,139,250,0.25);
 }
 
 .detail-section {
@@ -588,7 +590,7 @@ watch(() => props.systemLogs.length, () => {
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 600;
-    color: rgba(244, 241, 255,0.4);
+    color: #c4b5fd;
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 3px;
@@ -606,8 +608,10 @@ watch(() => props.systemLogs.length, () => {
     flex-wrap: wrap;
     gap: 6px;
     align-items: baseline;
-    padding: 4px;
-    background: #1a0f3a;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(48,36,84,0.55) 0%, rgba(20,14,42,0.7) 100%);
+    border: 1px solid rgba(167,139,250,0.18);
 }
 
 .attr-name {
@@ -622,7 +626,7 @@ watch(() => props.systemLogs.length, () => {
 }
 
 .attr-desc {
-    color: rgba(244, 241, 255,0.5);
+    color: rgba(244, 241, 255,0.7);
     flex: 1;
     min-width: 150px;
 }
@@ -635,10 +639,11 @@ watch(() => props.systemLogs.length, () => {
 
 .example-tag {
     font-size: 11px;
-    background: #110a26;
-    border: 1px solid rgba(10,10,10,0.12);
-    padding: 3px 8px;
-    color: rgba(244, 241, 255,0.5);
+    background: linear-gradient(180deg, rgba(80,60,140,0.4) 0%, rgba(28,18,58,0.6) 100%);
+    border: 1px solid rgba(167,139,250,0.28);
+    border-radius: 9999px;
+    padding: 4px 12px;
+    color: rgba(233,230,255,0.85);
 }
 
 .conn-item {
@@ -646,8 +651,10 @@ watch(() => props.systemLogs.length, () => {
     align-items: center;
     gap: 8px;
     font-size: 11px;
-    padding: 6px;
-    background: #1a0f3a;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(48,36,84,0.55) 0%, rgba(20,14,42,0.7) 100%);
+    border: 1px solid rgba(167,139,250,0.18);
     font-family: var(--font-mono);
 }
 
@@ -716,15 +723,15 @@ watch(() => props.systemLogs.length, () => {
 }
 
 .sim-setting-select {
-  background: var(--color-white);
-  border: 1px solid rgba(10, 10, 10, 0.15);
-  padding: 4px 8px;
+  background: linear-gradient(180deg, rgba(40,30,70,0.6) 0%, rgba(18,12,38,0.85) 100%);
+  border: 1px solid rgba(167,139,250,0.28);
+  padding: 5px 12px;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-black);
+  color: #f4f1ff;
   cursor: pointer;
   outline: none;
-  border-radius: 0;
+  border-radius: 9999px;
 }
 
 .sim-setting-select:focus {
@@ -739,25 +746,43 @@ watch(() => props.systemLogs.length, () => {
 /* Step 03 Button */
 .action-btn {
   width: 100%;
-  background: #f4f1ff;
-  color: #110a26;
+  background: linear-gradient(180deg, #6a4ad6 0%, #4922b8 45%, #2a118a 55%, #4f2dc4 100%);
+  color: #f8f5ff;
   border: none;
-  padding: 14px;
+  border-radius: 9999px;
+  padding: 16px;
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 3px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.4);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    inset 0 -1px 0 rgba(0,0,0,0.45),
+    0 14px 32px -10px rgba(139,92,246,0.6),
+    0 0 50px -12px rgba(167,139,250,0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .action-btn:hover:not(:disabled) {
-  opacity: 0.8;
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    inset 0 -1px 0 rgba(0,0,0,0.45),
+    0 20px 40px -10px rgba(139,92,246,0.75),
+    0 0 70px -12px rgba(167,139,250,0.65);
 }
 
 .action-btn:disabled {
-  background: rgba(10,10,10,0.2);
+  background: linear-gradient(180deg, rgba(64,50,110,0.55) 0%, rgba(30,20,60,0.7) 100%);
+  color: rgba(233,230,255,0.6);
+  box-shadow:
+    0 0 0 1px rgba(167,139,250,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.08);
   cursor: not-allowed;
 }
 
@@ -833,11 +858,11 @@ watch(() => props.systemLogs.length, () => {
 
 /* System Logs */
 .system-logs {
-  background: #f4f1ff;
-  color: rgba(250,250,250,0.8);
+  background: linear-gradient(180deg, rgba(20,14,42,0.9) 0%, rgba(8,5,22,0.95) 100%);
+  color: rgba(228,222,255,0.8);
   padding: 22px;
   font-family: var(--font-mono);
-  border-top: 2px solid rgba(250,250,250,0.08);
+  border-top: 1px solid rgba(167,139,250,0.18);
   flex-shrink: 0;
 }
 

@@ -25,7 +25,9 @@
         @click="selectTemplate(template)"
       >
         <div class="card-top">
-          <span class="card-icon">{{ iconMap[template.icon] || '◆' }}</span>
+          <svg class="card-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path :d="iconPaths[template.icon] || iconPaths.default" />
+          </svg>
           <span class="card-category">{{ template.category }}</span>
         </div>
 
@@ -98,8 +100,12 @@
             :title="$tr('Copy a shareable link that auto-launches this template', '复制可自动启动此模板的分享链接')"
             @click.stop="copyTemplateLink(template)"
           >
-            <span v-if="copiedLinkId === template.id">✓</span>
-            <span v-else>🔗</span>
+            <svg v-if="copiedLinkId === template.id" viewBox="0 0 24 24" class="cl-icon" fill="currentColor" aria-hidden="true">
+              <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" class="cl-icon" fill="currentColor" aria-hidden="true">
+              <path d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12Zm5.1 1h6v-2H9v2Zm8-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10Z" />
+            </svg>
           </button>
         </div>
       </div>
@@ -128,13 +134,17 @@ const toggleOracleOpt = (templateId, checked) => {
   oracleOptIn[templateId] = checked
 }
 
-const iconMap = {
-  vote: '🗳',
-  chart: '📈',
-  alert: '⚠',
-  rocket: '🚀',
-  clock: '⏳',
-  school: '🎓'
+// Inline SVG paths (24x24, fill=currentColor) — replaces the old emoji
+// iconMap so category icons render consistently everywhere (emoji were
+// showing as empty glyphs in some browsers, and the website uses SVGs).
+const iconPaths = {
+  vote: 'M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-9 14-4-4 1.4-1.4L10 14.2l6.6-6.6L18 9z',
+  chart: 'M4 20h3v-8H4v8zm6.5 0h3V4h-3v16zm6.5 0h3V8h-3v12z',
+  alert: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+  rocket: 'M12 4l-7 7h4v7h6v-7h4z',
+  clock: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h-4v-2h2V7h2z',
+  school: 'M12 3 1 9l11 6 9-4.9V17h2V9zM5 13.2v3.3l7 3.8 7-3.8v-3.3l-7 3.8z',
+  default: 'M12 2l10 10-10 10L2 12z',
 }
 
 // Retry the initial fetch a few times. The frontend (Vite) is up before
@@ -327,7 +337,11 @@ const launchTemplate = async (template) => {
 }
 
 .card-icon {
-  font-size: 1.4rem;
+  width: 22px;
+  height: 22px;
+  display: block;
+  color: #c4b5fd;
+  filter: drop-shadow(0 2px 8px rgba(167, 139, 250, 0.45));
 }
 
 .card-category {
@@ -484,6 +498,12 @@ const launchTemplate = async (template) => {
   justify-content: center;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
   transition: color 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.copy-link-btn .cl-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .copy-link-btn:hover {

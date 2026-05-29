@@ -2947,22 +2947,22 @@ onUnmounted(() => {
 /* Push notification toggle inside events-summary bar */
 /* Director Mode — amber accent distinguishes from the orange-toggled overlays */
 .director-btn.active {
-  border-color: var(--color-amber, #FFB347);
-  color: var(--color-amber, #FFB347);
+  border-color: #a78bfa;
+  color: #a78bfa;
 }
 
 .director-badge {
   margin-left: 4px;
   padding: 1px 6px;
-  background: rgba(255, 179, 71, 0.18);
+  background: rgba(167, 139, 250, 0.18);
   font-family: var(--font-mono, 'Space Mono', monospace);
   font-size: 9px;
   letter-spacing: 1px;
-  color: var(--color-amber, #FFB347);
+  color: #a78bfa;
 }
 
 .director-card {
-  background: #FFF8F0 !important;
+  background: rgba(28, 18, 58, 0.92) !important;
   border-left: 3px solid #a78bfa !important;
 }
 .director-inline-banner {
@@ -3009,7 +3009,7 @@ onUnmounted(() => {
 
 .director-icon {
   font-size: 14px;
-  color: #f59e0b;
+  color: #a78bfa;
 }
 
 .director-label {
@@ -3033,8 +3033,9 @@ onUnmounted(() => {
 .director-input {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid rgba(10,10,10,0.12);
-  background: rgba(10,10,10,0.02);
+  border: 1px solid rgba(167,139,250,0.28);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(22,16,46,0.85) 0%, rgba(8,5,22,0.95) 100%);
   font-family: var(--font-mono, 'Space Mono', monospace);
   font-size: 12px;
   color: #f4f1ff;
@@ -3045,7 +3046,7 @@ onUnmounted(() => {
 }
 
 .director-input:focus {
-  border-color: #f59e0b;
+  border-color: #a78bfa;
 }
 
 .director-input:disabled {
@@ -3071,7 +3072,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: #f59e0b;
+  background: #a78bfa;
   border: none;
   color: #fff;
   font-family: var(--font-mono, 'Space Mono', monospace);
@@ -3082,7 +3083,7 @@ onUnmounted(() => {
 }
 
 .director-inject-btn:hover:not(:disabled) {
-  background: #d97706;
+  background: #7c3aed;
 }
 
 .director-inject-btn:disabled {
@@ -3115,8 +3116,8 @@ onUnmounted(() => {
   width: 100%;
   text-align: left;
   padding: 10px 12px;
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  background: rgba(245, 158, 11, 0.04);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  background: rgba(167, 139, 250, 0.04);
   margin-bottom: 6px;
   font-family: inherit;
   color: inherit;
@@ -3128,32 +3129,32 @@ onUnmounted(() => {
 }
 
 .director-event-card-clickable:hover {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.45);
 }
 
 .director-event-jump {
   margin-left: 8px;
-  color: rgba(245, 158, 11, 0.55);
+  color: rgba(167, 139, 250, 0.55);
   font-size: 11px;
   transition: var(--transition-fast);
 }
 
 .director-event-card-clickable:hover .director-event-jump {
-  color: #f59e0b;
+  color: #a78bfa;
   transform: translate(1px, -1px);
 }
 
 /* Flash the targeted timeline item when jumped to from the event list */
 @keyframes timeline-item-flash {
-  0%   { background: rgba(245, 158, 11, 0.35); }
-  60%  { background: rgba(245, 158, 11, 0.18); }
+  0%   { background: rgba(167, 139, 250, 0.35); }
+  60%  { background: rgba(167, 139, 250, 0.18); }
   100% { background: transparent; }
 }
 
 .timeline-item-flash .timeline-card {
   animation: timeline-item-flash 1.6s ease-out;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.5);
 }
 
 .director-event-card.pending {
@@ -3172,7 +3173,7 @@ onUnmounted(() => {
 .director-event-badge {
   font-size: 10px;
   letter-spacing: 1px;
-  color: #f59e0b;
+  color: #a78bfa;
   font-weight: 600;
 }
 
@@ -3204,7 +3205,7 @@ onUnmounted(() => {
 .director-banner-line {
   flex: 1;
   height: 1px;
-  background: rgba(245, 158, 11, 0.3);
+  background: rgba(167, 139, 250, 0.3);
 }
 
 .director-banner-content {
@@ -3212,14 +3213,14 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: rgba(167, 139, 250, 0.08);
+  border: 1px solid rgba(167, 139, 250, 0.2);
   flex-shrink: 0;
 }
 
 .director-banner-icon {
   font-size: 12px;
-  color: #f59e0b;
+  color: #a78bfa;
 }
 
 .director-banner-text {

@@ -2,7 +2,10 @@
   <div class="explore-container">
     <!-- Top Navigation Bar (mirrors Home.vue nav for visual consistency) -->
     <nav class="navbar">
-      <router-link to="/" class="nav-brand" :title="$tr('Back to home', '返回首页')">MIROSHARK</router-link>
+      <router-link to="/" class="nav-brand" :title="$tr('Back to home', '返回首页')">
+        <img src="/shark.webp" alt="" class="nav-brand-mark" />
+        <span>MiroShark</span>
+      </router-link>
       <div class="nav-links">
         <router-link to="/" class="nav-link" :title="$tr('Back to home', '返回首页')">
           <span class="arrow">←</span> {{ $tr('Home', '首页') }}
@@ -23,7 +26,7 @@
       <!-- Header -->
       <header class="explore-header">
         <div class="tag-row">
-          <span class="orange-tag">{{ verifiedOnly ? $tr('📍 Verified', '📍 已验证') : $tr('◎ Explore', '◎ 浏览') }}</span>
+          <span class="chrome-chip">{{ verifiedOnly ? $tr('Verified', '已验证') : $tr('Explore', '浏览') }}</span>
           <span class="meta-sep">·</span>
           <span class="meta-text">
             {{ verifiedOnly ? $tr('Predictions that called real events', '预言已对应真实事件') : $tr('Public simulation gallery', '公开模拟图库') }}
@@ -106,7 +109,7 @@
               :disabled="loading"
             >
               <option value="date">{{ $tr('Newest first', '最新优先') }}</option>
-              <option value="trending">{{ $tr('🔥 Trending', '🔥 热门') }}</option>
+              <option value="trending">{{ $tr('Trending', '热门') }}</option>
               <option value="rounds">{{ $tr('Most rounds', '轮次最多') }}</option>
               <option value="agents">{{ $tr('Most agents', '智能体最多') }}</option>
             </select>
@@ -155,7 +158,9 @@
             :disabled="loading"
             :title="verifiedFilter ? $tr('Show all public simulations', '显示全部公开模拟') : $tr('Show only simulations with a recorded outcome', '只显示已记录结果的模拟')"
           >
-            <span class="filter-chip-icon">📍</span>
+            <svg class="filter-chip-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+            </svg>
             <span>{{ $tr('Verified only', '仅已验证') }}</span>
           </button>
 
@@ -173,7 +178,9 @@
                 : $tr('Subscribe to all public simulations as an Atom feed in Feedly / Readwise / Inoreader / NetNewsWire', '在 Feedly / Readwise / Inoreader / NetNewsWire 中以 Atom 源订阅全部公开模拟')
             "
           >
-            <span class="filter-chip-icon">📡</span>
+            <svg class="filter-chip-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M5 3v2.5c8 0 13.5 5.5 13.5 13.5H21C21 9.6 14.4 3 5 3Zm0 5v2.5c4.7 0 8.5 3.8 8.5 8.5H16C16 12.7 11.3 8 5 8Zm1.5 6.5A2 2 0 1 0 6.5 18.5a2 2 0 0 0 0-4Z" />
+            </svg>
             <span>{{ $tr('Subscribe via RSS', '通过 RSS 订阅') }}</span>
           </a>
 
@@ -206,7 +213,7 @@
 
       <!-- Empty -->
       <div v-else-if="items.length === 0" class="gallery-empty">
-        <div class="empty-icon">{{ filtersActive ? '⌕' : (verifiedFilter ? '📍' : '◇') }}</div>
+        <div class="empty-icon">{{ verifiedFilter ? '◈' : '◇' }}</div>
         <div class="empty-title">
           <template v-if="filtersActive">
             {{ $tr('No simulations match your filters.', '没有模拟符合你的筛选条件。') }}
@@ -665,8 +672,8 @@ const outcomePillLabel = (label) => {
 }
 
 const outcomePillIcon = (label) => {
-  if (label === 'correct') return '📍'
-  if (label === 'incorrect') return '⚠'
+  if (label === 'correct') return '✓'
+  if (label === 'incorrect') return '✕'
   if (label === 'partial') return '◑'
   return ''
 }
@@ -797,8 +804,10 @@ onMounted(refresh)
 <style scoped>
 .explore-container {
   min-height: 100vh;
-  background: var(--background);
-  font-family: var(--font-display);
+  /* Transparent so the global deep-space background + stars (App.vue
+     .space-bg / .space-stars) show through, like every other route. */
+  background: transparent;
+  font-family: var(--font-sans);
   color: var(--foreground);
 }
 
@@ -819,14 +828,24 @@ onMounted(refresh)
 }
 
 .nav-brand {
-  font-family: 'Geist', system-ui, -apple-system, sans-serif;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-sans);
+  font-weight: 700;
   letter-spacing: -0.01em;
   font-size: 1.05rem;
   text-transform: none;
   color: #f4f1ff;
   text-decoration: none;
   transition: color 180ms ease;
+}
+
+.nav-brand-mark {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(167, 139, 250, 0.5));
 }
 
 .nav-brand:hover { color: #c4b5fd; }
@@ -908,9 +927,16 @@ onMounted(refresh)
 .page-title {
   font-family: var(--font-display);
   font-size: 52px;
+  font-weight: 800;
   line-height: 1.1;
   margin-bottom: var(--space-md);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.02em;
+  /* Chrome-metal display heading, matching the website. */
+  background: linear-gradient(180deg, #ffffff 0%, #e2dcf6 50%, #b9b0d8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5));
 }
 
 .page-subtitle {
@@ -1294,7 +1320,9 @@ a.pill-verified:hover {
 }
 
 .filter-chip-icon {
-  font-family: sans-serif;
+  width: 14px;
+  height: 14px;
+  flex: none;
 }
 
 /* The feed chip is visually subordinate to "Verified only" — it's a
