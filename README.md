@@ -68,7 +68,7 @@ The launcher checks dependencies, starts Neo4j, installs frontend + backend, and
 **Other paths** — [one-click Railway / Render deploy](docs/INSTALL.md#one-click-cloud), [Docker + Ollama](docs/INSTALL.md#option-b-docker--local-ollama), [manual Ollama](docs/INSTALL.md#option-c-manual--local-ollama), [Claude Code CLI](docs/INSTALL.md#option-d-claude-code-no-api-key) — all in **[docs/INSTALL.md](docs/INSTALL.md)**.
 
 <p align="center">
-  <img src="./docs/images/miroshark-overview.jpg" alt="MiroShark Overview" />
+  <img src="./docs/images/miroshark-overview-diagram.png" alt="MiroShark Overview" />
 </p>
 
 ### Interface language
@@ -138,21 +138,13 @@ After launching, click the **中 / EN** toggle in the top-right of the navbar to
 
 Each feature is documented in **[docs/FEATURES.md](docs/FEATURES.md)**.
 
-### Screenshots
-
-<div align="center">
-<table>
-<tr><td><img src="./docs/images/1.jpg" width="100%"/></td><td><img src="./docs/images/2.jpg" width="100%"/></td></tr>
-<tr><td><img src="./docs/images/3.jpg" width="100%"/></td><td><img src="./docs/images/4.jpg" width="100%"/></td></tr>
-<tr><td><img src="./docs/images/5.jpg" width="100%"/></td><td><img src="./docs/images/6.jpg" width="100%"/></td></tr>
-</table>
-</div>
+### Diagrams
 
 <div align="center">
 <table>
 <tr>
 <td><img src="./docs/images/simulation-phases.png" alt="Diagram 1" width="100%"/></td>
-<td><img src="./docs/images/cross-platform-dynamics.png" alt="Diagram 2" width="100%"/></td>
+<td><img src="./docs/images/diagram2.jpg" alt="Diagram 2" width="100%"/></td>
 </tr>
 <tr>
 <td><img src="./docs/images/agent-grounding.png" alt="Five layers of grounding per agent: demographic seed, web enrichment, semantic search, relationships, graph attributes" width="100%"/></td>
