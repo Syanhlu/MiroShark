@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="./docs/images/miroshark.gif" alt="MiroShark Demo" />
+  <img src="./docs/images/miroshark-demo.gif" alt="MiroShark Demo" />
 </p>
 
 ---
