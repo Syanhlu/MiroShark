@@ -27,6 +27,7 @@ from camel.toolkits import FunctionTool
 from camel.types import OpenAIBackendRole
 
 from app.utils.i18n import get_active_locale, t as _t
+from app.utils.llm_message_filter import filter_openai_messages_for_api
 from wonderwall.social_agent.agent_action import SocialAction
 from wonderwall.social_agent.agent_environment import SocialEnvironment
 from wonderwall.social_platform import Channel
@@ -176,12 +177,7 @@ class SocialAgent(ChatAgent):
         import os as _os
         import time as _time
 
-        filtered = [
-            msg for msg in openai_messages
-            if msg.get("content") is not None and str(msg["content"]).strip()
-        ]
-        if not filtered:
-            filtered = [{"role": "user", "content": "(empty context)"}]
+        filtered = filter_openai_messages_for_api(openai_messages)
 
         # Inject OpenRouter metadata per-call so each generation is tagged.
         # Structured for Langfuse: `user` becomes the Langfuse sessionId,
