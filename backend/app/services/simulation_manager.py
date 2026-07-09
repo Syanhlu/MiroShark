@@ -65,6 +65,10 @@ class SimulationState:
     enable_threads: bool = True
     enable_facebook: bool = True
     enable_polymarket: bool = False
+    # TikTok is opt-in (default False), unlike Threads/Facebook: it has no
+    # run_parallel_simulation.py integration yet, only a standalone
+    # run_tiktok_simulation.py — see the miroshark agent doc.
+    enable_tiktok: bool = False
 
     # Number of prediction markets to generate when Polymarket is enabled.
     # Defaults to 1 (historical behavior). Range [1, 5] enforced upstream.
@@ -86,6 +90,7 @@ class SimulationState:
     current_round: int = 0
     threads_status: str = "not_started"
     facebook_status: str = "not_started"
+    tiktok_status: str = "not_started"
 
     # Timestamps
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -120,6 +125,7 @@ class SimulationState:
             "enable_threads": self.enable_threads,
             "enable_facebook": self.enable_facebook,
             "enable_polymarket": self.enable_polymarket,
+            "enable_tiktok": self.enable_tiktok,
             "polymarket_market_count": self.polymarket_market_count,
             "status": self.status.value,
             "entities_count": self.entities_count,
@@ -130,6 +136,7 @@ class SimulationState:
             "current_round": self.current_round,
             "threads_status": self.threads_status,
             "facebook_status": self.facebook_status,
+            "tiktok_status": self.tiktok_status,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "error": self.error,
@@ -219,6 +226,7 @@ class SimulationManager:
             enable_threads=data.get("enable_threads", True),
             enable_facebook=data.get("enable_facebook", True),
             enable_polymarket=data.get("enable_polymarket", False),
+            enable_tiktok=data.get("enable_tiktok", False),
             polymarket_market_count=int(data.get("polymarket_market_count", 1) or 1),
             status=SimulationStatus(data.get("status", "created")),
             entities_count=data.get("entities_count", 0),
@@ -229,6 +237,7 @@ class SimulationManager:
             current_round=data.get("current_round", 0),
             threads_status=data.get("threads_status", "not_started"),
             facebook_status=data.get("facebook_status", "not_started"),
+            tiktok_status=data.get("tiktok_status", "not_started"),
             created_at=data.get("created_at", datetime.now().isoformat()),
             updated_at=data.get("updated_at", datetime.now().isoformat()),
             error=data.get("error"),
@@ -249,6 +258,7 @@ class SimulationManager:
         enable_threads: bool = True,
         enable_facebook: bool = True,
         enable_polymarket: bool = False,
+        enable_tiktok: bool = False,
         polymarket_market_count: int = 1,
         country: Optional[str] = None,
         demographic_filters: Optional[Dict[str, Any]] = None,
@@ -262,6 +272,9 @@ class SimulationManager:
             enable_threads: Whether to enable Threads simulation
             enable_facebook: Whether to enable Facebook simulation
             enable_polymarket: Whether to enable Polymarket simulation
+            enable_tiktok: Whether to enable TikTok simulation (opt-in;
+                only runnable standalone via run_tiktok_simulation.py, not
+                yet part of run_parallel_simulation.py)
             country: Optional demographic country code (e.g. "sg", "us") —
                 when matching a pack under backend/app/countries/, the
                 persona generator anchors each agent in a Nemotron row.
@@ -283,6 +296,7 @@ class SimulationManager:
             enable_threads=enable_threads,
             enable_facebook=enable_facebook,
             enable_polymarket=enable_polymarket,
+            enable_tiktok=enable_tiktok,
             polymarket_market_count=max(1, min(5, int(polymarket_market_count or 1))),
             status=SimulationStatus.CREATED,
             country=normalized_country,
@@ -455,6 +469,15 @@ class SimulationManager:
                     platform="threads"
                 )
 
+            if state.enable_tiktok:
+                # TikTok uses the same JSON shape as Facebook (see
+                # generate_tiktok_agent_graph in wonderwall/social_agent).
+                generator.save_profiles(
+                    profiles=profiles,
+                    file_path=os.path.join(sim_dir, "tiktok_profiles.json"),
+                    platform="tiktok"
+                )
+
             if state.enable_polymarket:
                 generator.save_profiles(
                     profiles=profiles,
@@ -500,6 +523,7 @@ class SimulationManager:
                 entities=filtered.entities,
                 enable_threads=state.enable_threads,
                 enable_facebook=state.enable_facebook,
+                enable_tiktok=state.enable_tiktok,
                 polymarket_market_count=state.polymarket_market_count,
             )
             
@@ -711,6 +735,7 @@ class SimulationManager:
             "facebook_profiles.json",
             "threads_profiles.csv",
             "polymarket_profiles.json",
+            "tiktok_profiles.json",
         ]
         for fname in files_to_copy:
             src = os.path.join(parent_dir, fname)
@@ -753,6 +778,7 @@ class SimulationManager:
             enable_threads=parent.enable_threads,
             enable_facebook=parent.enable_facebook,
             enable_polymarket=parent.enable_polymarket,
+            enable_tiktok=parent.enable_tiktok,
             polymarket_market_count=parent.polymarket_market_count,
             status=SimulationStatus.READY,
             entities_count=parent.entities_count,
@@ -786,6 +812,7 @@ class SimulationManager:
             "commands": {
                 "threads": f"python {scripts_dir}/run_threads_simulation.py --config {config_path}",
                 "facebook": f"python {scripts_dir}/run_facebook_simulation.py --config {config_path}",
+                "tiktok": f"python {scripts_dir}/run_tiktok_simulation.py --config {config_path}",
                 "parallel": f"python {scripts_dir}/run_parallel_simulation.py --config {config_path}",
             },
             "instructions": (
@@ -793,6 +820,8 @@ class SimulationManager:
                 f"2. Run simulation (scripts located at {scripts_dir}):\n"
                 f"   - Run Threads only: python {scripts_dir}/run_threads_simulation.py --config {config_path}\n"
                 f"   - Run Facebook only: python {scripts_dir}/run_facebook_simulation.py --config {config_path}\n"
-                f"   - Run both platforms in parallel: python {scripts_dir}/run_parallel_simulation.py --config {config_path}"
+                f"   - Run TikTok only: python {scripts_dir}/run_tiktok_simulation.py --config {config_path}\n"
+                f"   - Run Threads+Facebook+Polymarket in parallel: python {scripts_dir}/run_parallel_simulation.py --config {config_path}\n"
+                f"     (TikTok is not yet part of the parallel runner — run it standalone alongside)"
             )
         }

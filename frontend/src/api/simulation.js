@@ -2,7 +2,7 @@ import service, { requestWithRetry } from './index'
 
 /**
  * Create simulation
- * @param {Object} data - { project_id, graph_id?, enable_threads?, enable_facebook?, enable_polymarket? }
+ * @param {Object} data - { project_id, graph_id?, enable_threads?, enable_facebook?, enable_polymarket?, enable_tiktok? }
  */
 export const createSimulation = (data) => {
   return requestWithRetry(() => service.post('/api/simulation/create', data), 3, 1000)

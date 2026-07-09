@@ -25,6 +25,7 @@ This module fills that gap with one stdlib derivation:
       "enable_threads":         true,
       "enable_facebook":        true,
       "enable_polymarket":      false,
+      "enable_tiktok":          false,
       "polymarket_market_count": 1,
       "country":                null,
       "demographic_filters":    null
@@ -218,6 +219,7 @@ def build_clone_payload(
     enable_threads = _safe_bool(state.get("enable_threads"), default=True)
     enable_facebook = _safe_bool(state.get("enable_facebook"), default=True)
     enable_polymarket = _safe_bool(state.get("enable_polymarket"), default=False)
+    enable_tiktok = _safe_bool(state.get("enable_tiktok"), default=False)
     polymarket_market_count = max(
         1, min(5, _safe_int(state.get("polymarket_market_count", 1), 1))
     )
@@ -241,6 +243,7 @@ def build_clone_payload(
         "enable_threads": enable_threads,
         "enable_facebook": enable_facebook,
         "enable_polymarket": enable_polymarket,
+        "enable_tiktok": enable_tiktok,
         "polymarket_market_count": polymarket_market_count,
         "country": country,
         "demographic_filters": demographic_filters,

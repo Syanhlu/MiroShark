@@ -101,6 +101,9 @@ class SimulationRunState:
     threads_running: bool = False
     facebook_running: bool = False
     polymarket_running: bool = False
+    # Standalone only — TikTok has no run_parallel_simulation.py integration
+    # yet, so it never gets the per-round/actions_count tracking below.
+    tiktok_running: bool = False
     threads_actions_count: int = 0
     facebook_actions_count: int = 0
     polymarket_actions_count: int = 0
@@ -162,6 +165,7 @@ class SimulationRunState:
             "threads_running": self.threads_running,
             "facebook_running": self.facebook_running,
             "polymarket_running": self.polymarket_running,
+            "tiktok_running": self.tiktok_running,
             "threads_completed": self.threads_completed,
             "facebook_completed": self.facebook_completed,
             "polymarket_completed": self.polymarket_completed,

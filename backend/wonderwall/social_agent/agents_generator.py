@@ -614,6 +614,58 @@ async def generate_facebook_agent_graph(
     return agent_graph
 
 
+async def generate_tiktok_agent_graph(
+    profile_path: str,
+    model: Optional[Union[BaseModelBackend, List[BaseModelBackend],
+                          ModelManager]] = None,
+    available_actions: list[ActionType] = None,
+    simulation=None,
+) -> AgentGraph:
+    agent_graph = AgentGraph()
+    with open(profile_path, "r") as file:
+        agent_info = json.load(file)
+
+    async def process_agent(i):
+        # Instantiate an agent
+        profile = {
+            "nodes": [],  # Relationships with other agents
+            "edges": [],  # Relationship details
+            "other_info": {},
+        }
+        # Update agent profile with additional information
+        profile["other_info"]["user_profile"] = agent_info[i].get("persona", "")
+        profile["other_info"]["mbti"] = agent_info[i].get("mbti", "INTJ")
+        profile["other_info"]["gender"] = agent_info[i].get("gender", "other")
+        profile["other_info"]["age"] = agent_info[i].get("age", 30)
+        profile["other_info"]["country"] = agent_info[i]["country"]
+
+        user_info = UserInfo(
+            name=agent_info[i]["username"],
+            description=agent_info[i]["bio"],
+            profile=profile,
+            # twhin-bert family, same bucket as Threads/Twitter — TikTok's
+            # "For You" recsys is interest-similarity driven, not the
+            # Reddit-style global hot-score feed.
+            recsys_type="twitter",
+        )
+
+        agent = SocialAgent(
+            agent_id=i,
+            user_info=user_info,
+            agent_graph=agent_graph,
+            model=model,
+            available_actions=available_actions,
+            simulation=simulation,
+        )
+
+        # Add agent to the agent graph
+        agent_graph.add_agent(agent)
+
+    tasks = [process_agent(i) for i in range(len(agent_info))]
+    await asyncio.gather(*tasks)
+    return agent_graph
+
+
 async def generate_threads_agent_graph(
     profile_path: str,
     model: Optional[Union[BaseModelBackend, List[BaseModelBackend],

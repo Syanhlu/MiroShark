@@ -508,7 +508,7 @@ paths:
                   properties:
                     platform:
                       type: string
-                      enum: [threads, facebook, parallel]
+                      enum: [threads, facebook, polymarket, tiktok, parallel]
                       default: parallel
                     max_rounds:
                       type: integer
@@ -6520,6 +6520,7 @@ components:
         - enable_threads
         - enable_facebook
         - enable_polymarket
+        - enable_tiktok
         - polymarket_market_count
         - country
         - demographic_filters
@@ -6544,6 +6545,13 @@ components:
         enable_polymarket:
           type: boolean
           description: Whether the sim ran the Polymarket platform leg.
+        enable_tiktok:
+          type: boolean
+          description: |
+            Whether the sim ran the TikTok platform leg. Opt-in
+            (default `false`) — TikTok only runs standalone via
+            `run_tiktok_simulation.py`, not yet part of the
+            multi-platform parallel runner.
         polymarket_market_count:
           type: integer
           minimum: 1
@@ -8388,12 +8396,13 @@ components:
           type: object
           description: |
             Platform toggles + the polymarket market-count knob — the
-            four boolean / integer parameters that together with the
-            scenario decide which channels the agents post to.
+            parameters that together with the scenario decide which
+            channels the agents post to.
           required:
             - threads
             - facebook
             - polymarket
+            - tiktok
             - polymarket_market_count
           properties:
             threads:
@@ -8405,6 +8414,13 @@ components:
             polymarket:
               type: boolean
               description: Whether the simulation enabled prediction-market trading.
+            tiktok:
+              type: boolean
+              description: |
+                Whether the simulation enabled the TikTok platform.
+                Opt-in (default `false`) — TikTok only runs standalone
+                via `run_tiktok_simulation.py`, not yet part of the
+                multi-platform parallel runner.
             polymarket_market_count:
               type: integer
               minimum: 1

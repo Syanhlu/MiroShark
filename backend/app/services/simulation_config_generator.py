@@ -148,7 +148,7 @@ class PlatformConfig:
     - Recommendation weights: These control the feed algorithm's trade-off between
       fresh content, popular content, and content relevant to the agent's interests.
     """
-    platform: str  # threads or facebook
+    platform: str  # threads, facebook, or tiktok
 
     # Recommendation algorithm weights (must sum to 1.0)
     recency_weight: float = 0.4   # Favor recent content
@@ -185,6 +185,7 @@ class SimulationParameters:
     # Platform configuration
     threads_config: Optional[PlatformConfig] = None
     facebook_config: Optional[PlatformConfig] = None
+    tiktok_config: Optional[PlatformConfig] = None
 
     # LLM configuration
     llm_model: str = ""
@@ -207,6 +208,7 @@ class SimulationParameters:
             "event_config": asdict(self.event_config),
             "threads_config": asdict(self.threads_config) if self.threads_config else None,
             "facebook_config": asdict(self.facebook_config) if self.facebook_config else None,
+            "tiktok_config": asdict(self.tiktok_config) if self.tiktok_config else None,
             "llm_model": self.llm_model,
             "llm_base_url": self.llm_base_url,
             "generated_at": self.generated_at,
@@ -272,6 +274,7 @@ class SimulationConfigGenerator:
         entities: List[EntityNode],
         enable_threads: bool = True,
         enable_facebook: bool = True,
+        enable_tiktok: bool = False,
         polymarket_market_count: int = 1,
         progress_callback: Optional[Callable[[int, int, str], None]] = None,
     ) -> SimulationParameters:
@@ -287,6 +290,7 @@ class SimulationConfigGenerator:
             entities: Filtered entity list
             enable_threads: Whether to enable Threads
             enable_facebook: Whether to enable Facebook
+            enable_tiktok: Whether to enable TikTok
             progress_callback: Progress callback function(current_step, total_steps, message)
 
         Returns:
@@ -387,6 +391,7 @@ class SimulationConfigGenerator:
         report_progress(total_steps, "Generating platform configuration...")
         threads_config = None
         facebook_config = None
+        tiktok_config = None
 
         if enable_threads:
             # Threads: slightly favors recency, moderate echo chamber.
@@ -412,6 +417,19 @@ class SimulationConfigGenerator:
                 echo_chamber_strength=0.6,
             )
 
+        if enable_tiktok:
+            # TikTok: "For You" feed — heavily favors popularity/virality over
+            # recency or on-topic relevance, weakest echo chamber (algorithm
+            # surfaces outside your network more than Threads/Facebook).
+            tiktok_config = PlatformConfig(
+                platform="tiktok",
+                recency_weight=0.2,
+                popularity_weight=0.6,
+                relevance_weight=0.2,
+                viral_threshold=8,
+                echo_chamber_strength=0.3,
+            )
+
         # Build final parameters
         params = SimulationParameters(
             simulation_id=simulation_id,
@@ -423,6 +441,7 @@ class SimulationConfigGenerator:
             event_config=event_config,
             threads_config=threads_config,
             facebook_config=facebook_config,
+            tiktok_config=tiktok_config,
             llm_model=self.model_name,
             llm_base_url=self.base_url,
             generation_reasoning=" | ".join(reasoning_parts)

@@ -176,6 +176,7 @@ def test_build_repro_config_full_round_trip(basic_state, basic_config, tmp_path)
         "threads": True,
         "facebook": True,
         "polymarket": False,
+        "tiktok": False,
         "polymarket_market_count": 1,
     }
 
@@ -228,6 +229,7 @@ def test_platforms_default_to_safe_values(tmp_path):
         "threads": True,
         "facebook": True,
         "polymarket": False,
+        "tiktok": False,
         "polymarket_market_count": 1,
     }
 

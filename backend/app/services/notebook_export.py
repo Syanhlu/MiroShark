@@ -160,6 +160,8 @@ def _platforms_summary(platforms: Optional[Dict[str, Any]]) -> str:
         parts.append("Threads")
     if platforms.get("facebook"):
         parts.append("Facebook")
+    if platforms.get("tiktok"):
+        parts.append("TikTok")
     if platforms.get("polymarket"):
         count = platforms.get("polymarket_market_count")
         try:

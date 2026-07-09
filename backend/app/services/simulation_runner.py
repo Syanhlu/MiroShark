@@ -152,6 +152,7 @@ class SimulationRunner:
                 threads_running=data.get("threads_running", False),
                 facebook_running=data.get("facebook_running", False),
                 polymarket_running=data.get("polymarket_running", False),
+                tiktok_running=data.get("tiktok_running", False),
                 threads_completed=data.get("threads_completed", False),
                 facebook_completed=data.get("facebook_completed", False),
                 polymarket_completed=data.get("polymarket_completed", False),
@@ -302,6 +303,11 @@ class SimulationRunner:
         elif platform == "polymarket":
             script_name = "run_parallel_simulation.py"
             state.polymarket_running = True
+        elif platform == "tiktok":
+            # Standalone only — TikTok is not yet part of
+            # run_parallel_simulation.py's cross-platform loop.
+            script_name = "run_tiktok_simulation.py"
+            state.tiktok_running = True
         else:
             script_name = "run_parallel_simulation.py"
             state.threads_running = True
@@ -574,6 +580,7 @@ class SimulationRunner:
             state.threads_running = False
             state.facebook_running = False
             state.polymarket_running = False
+            state.tiktok_running = False
             cls._save_run_state(state)
 
         except Exception as e:
@@ -892,6 +899,7 @@ class SimulationRunner:
         state.threads_running = False
         state.facebook_running = False
         state.polymarket_running = False
+        state.tiktok_running = False
         state.completed_at = datetime.now().isoformat()
         cls._save_run_state(state)
         
@@ -1377,6 +1385,8 @@ class SimulationRunner:
                         state.runner_status = RunnerStatus.STOPPED
                         state.threads_running = False
                         state.facebook_running = False
+                        state.polymarket_running = False
+                        state.tiktok_running = False
                         state.completed_at = datetime.now().isoformat()
                         state.error = "Server shut down, simulation was terminated"
                         cls._save_run_state(state)

@@ -16,7 +16,8 @@ __version__ = "0.3.0"
 from wonderwall.environment.env_action import LLMAction, ManualAction
 from wonderwall.environment.make import make
 from wonderwall.social_agent import (generate_facebook_agent_graph,
-                                generate_threads_agent_graph)
+                                generate_threads_agent_graph,
+                                generate_tiktok_agent_graph)
 from wonderwall.social_agent.agent import SocialAgent
 from wonderwall.social_agent.agent_graph import AgentGraph
 from wonderwall.social_platform.config import UserInfo
@@ -37,6 +38,7 @@ __all__ = [
     "make", "Platform", "ActionType", "DefaultPlatformType", "ManualAction",
     "LLMAction", "print_db_contents", "AgentGraph", "SocialAgent", "UserInfo",
     "generate_facebook_agent_graph", "generate_threads_agent_graph",
+    "generate_tiktok_agent_graph",
     "BasePlatform", "BaseAction", "BaseEnvironment", "BasePromptBuilder",
     "SimulationConfig",
 ]

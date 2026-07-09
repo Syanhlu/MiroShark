@@ -47,6 +47,7 @@ Schema (v1)::
         "threads": true,
         "facebook": true,
         "polymarket": false,
+        "tiktok": false,
         "polymarket_market_count": 1
       },
       "time_config": {
@@ -135,6 +136,7 @@ def _build_platforms(state_dict: Dict[str, Any]) -> Dict[str, Any]:
         "threads": bool(state_dict.get("enable_threads", True)),
         "facebook": bool(state_dict.get("enable_facebook", True)),
         "polymarket": bool(state_dict.get("enable_polymarket", False)),
+        "tiktok": bool(state_dict.get("enable_tiktok", False)),
         "polymarket_market_count": _safe_int(
             state_dict.get("polymarket_market_count", 1) or 1, default=1
         ),
@@ -454,7 +456,7 @@ def validate_blob(blob: Any) -> List[str]:
     if not isinstance(platforms, dict):
         errors.append("platforms must be an object")
     else:
-        for plat_key in ("threads", "facebook", "polymarket"):
+        for plat_key in ("threads", "facebook", "polymarket", "tiktok"):
             if plat_key in platforms and not isinstance(
                 platforms[plat_key], bool
             ):

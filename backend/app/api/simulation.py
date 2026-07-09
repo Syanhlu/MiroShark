@@ -1391,6 +1391,7 @@ def create_simulation():
             "enable_threads": true,          // Optional, default true
             "enable_facebook": true,           // Optional, default true
             "enable_polymarket": false,      // Optional, default false
+            "enable_tiktok": false,          // Optional, default false (standalone-run only, not in the parallel runner yet)
             "country": "sg",                 // Optional, demographic country pack code
             "demographic_filters": {         // Optional, narrows the Nemotron sample
                 "geography_values": ["Tampines", "Bedok"],
@@ -1456,6 +1457,7 @@ def create_simulation():
             enable_threads=data.get('enable_threads', True),
             enable_facebook=data.get('enable_facebook', True),
             enable_polymarket=data.get('enable_polymarket', False),
+            enable_tiktok=data.get('enable_tiktok', False),
             polymarket_market_count=data.get('polymarket_market_count', 1),
             country=data.get('country'),
             demographic_filters=raw_filters,
@@ -2802,6 +2804,7 @@ def retry_simulation_config(simulation_id: str):
                     entities=filtered.entities,
                     enable_threads=state.enable_threads,
                     enable_facebook=state.enable_facebook,
+                    enable_tiktok=state.enable_tiktok,
                     polymarket_market_count=state.polymarket_market_count,
                 )
 
@@ -3205,12 +3208,12 @@ def start_simulation():
                     )
                 }), 400
 
-        if platform not in ['threads', 'facebook', 'polymarket', 'parallel']:
+        if platform not in ['threads', 'facebook', 'polymarket', 'tiktok', 'parallel']:
             return jsonify({
                 "success": False,
                 "error": _t(
-                    f"Invalid platform type: {platform}, options: threads/facebook/polymarket/parallel",
-                    f"无效的平台类型:{platform},可选项:threads/facebook/polymarket/parallel",
+                    f"Invalid platform type: {platform}, options: threads/facebook/polymarket/tiktok/parallel",
+                    f"无效的平台类型:{platform},可选项:threads/facebook/polymarket/tiktok/parallel",
                     locale,
                 )
             }), 400
