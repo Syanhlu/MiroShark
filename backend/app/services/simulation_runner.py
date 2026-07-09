@@ -310,9 +310,26 @@ class SimulationRunner:
             state.tiktok_running = True
         else:
             script_name = "run_parallel_simulation.py"
-            state.threads_running = True
-            state.facebook_running = True
-            state.polymarket_running = True
+            # Only mark a platform "running" if it's actually enabled on the
+            # simulation — state.json carries the enable_* flags set at
+            # /simulation/create; run_parallel_simulation.py itself no-ops
+            # disabled platforms, but the run-state flags used to be set
+            # unconditionally here, which made e.g. a threads-only
+            # simulation falsely report facebook_running/polymarket_running.
+            enable_threads, enable_facebook, enable_polymarket = True, True, True
+            sim_state_path = os.path.join(sim_dir, "state.json")
+            if os.path.exists(sim_state_path):
+                try:
+                    with open(sim_state_path, 'r', encoding='utf-8') as f:
+                        sim_state_data = json.load(f)
+                    enable_threads = sim_state_data.get("enable_threads", True)
+                    enable_facebook = sim_state_data.get("enable_facebook", True)
+                    enable_polymarket = sim_state_data.get("enable_polymarket", False)
+                except Exception as e:
+                    logger.warning(f"Failed to read state.json for platform flags, defaulting to all enabled: {e}")
+            state.threads_running = enable_threads
+            state.facebook_running = enable_facebook
+            state.polymarket_running = enable_polymarket
         
         script_path = os.path.join(cls.SCRIPTS_DIR, script_name)
         

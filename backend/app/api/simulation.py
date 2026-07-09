@@ -1631,7 +1631,8 @@ def _check_simulation_prepared(simulation_id: str) -> tuple:
 
     Conditions checked:
     1. state.json exists and status is "ready"
-    2. Required files exist: facebook_profiles.json, threads_profiles.csv, simulation_config.json
+    2. Required files exist: simulation_config.json, plus a profile file per
+       platform actually enabled on this simulation (see below)
 
     Note: Run scripts (run_*.py) remain in backend/scripts/ directory and are no longer copied to simulation directory
 
@@ -1642,22 +1643,36 @@ def _check_simulation_prepared(simulation_id: str) -> tuple:
         (is_prepared: bool, info: dict)
     """
     import os
+    import json
     from ..config import Config
-    
+
     simulation_dir = os.path.join(Config.WONDERWALL_SIMULATION_DATA_DIR, simulation_id)
-    
+
     # Check if directory exists
     if not os.path.exists(simulation_dir):
         return False, {"reason": "Simulation directory does not exist"}
-    
-    # Required files list (excluding scripts, which are in backend/scripts/)
-    required_files = [
-        "state.json",
-        "simulation_config.json",
-        "facebook_profiles.json",
-        "threads_profiles.csv"
-    ]
-    
+
+    # state.json must exist first — the enable_* flags on it decide which
+    # profile files below are actually required (simulation_manager.py only
+    # writes facebook_profiles.json / threads_profiles.csv / tiktok_profiles.json
+    # for the platforms that are enabled, so requiring all of them
+    # unconditionally made prepare/status un-satisfiable for any
+    # single-platform simulation).
+    required_files = ["state.json", "simulation_config.json"]
+    state_probe_path = os.path.join(simulation_dir, "state.json")
+    if os.path.exists(state_probe_path):
+        try:
+            with open(state_probe_path, 'r', encoding='utf-8') as f:
+                state_probe = json.load(f)
+            if state_probe.get("enable_facebook"):
+                required_files.append("facebook_profiles.json")
+            if state_probe.get("enable_threads"):
+                required_files.append("threads_profiles.csv")
+            if state_probe.get("enable_tiktok"):
+                required_files.append("tiktok_profiles.json")
+        except Exception:
+            pass
+
     # Check if files exist
     existing_files = []
     missing_files = []
@@ -1678,7 +1693,6 @@ def _check_simulation_prepared(simulation_id: str) -> tuple:
     # Check status in state.json
     state_file = os.path.join(simulation_dir, "state.json")
     try:
-        import json
         with open(state_file, 'r', encoding='utf-8') as f:
             state_data = json.load(f)
         
