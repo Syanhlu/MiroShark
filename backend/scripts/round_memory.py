@@ -1,7 +1,7 @@
 """
 Round Memory — sliding-window context from all platforms for every agent.
 
-After each round, raw actions from all 3 platforms (Twitter, Reddit, Polymarket)
+After each round, raw actions from all 3 platforms (Threads, Facebook, Polymarket)
 are recorded. An LLM compacts old rounds into short summaries. The resulting
 context follows a sliding window:
 
@@ -21,10 +21,10 @@ Usage in the simulation loop:
         memory.start_round(round_num, simulated_day, simulated_hour)
 
         # After each platform steps:
-        memory.record("twitter", round_num, actual_actions)
-        memory.record("reddit",  round_num, actual_actions)
+        memory.record("threads", round_num, actual_actions)
+        memory.record("facebook",  round_num, actual_actions)
 
-        # Before Polymarket agents act, inject what Twitter+Reddit did:
+        # Before Polymarket agents act, inject what Threads+Facebook did:
         for agent_id, agent in active_polymarket_agents:
             inject_round_memory(agent, memory.build_context(round_num))
 
@@ -148,7 +148,7 @@ class RoundRecord:
         """Full-detail rendering of all actions this round."""
         header = f"Day {self.simulated_day}, {self.simulated_hour:02d}:00 (round {self.round_num + 1})"
         parts = [header]
-        for platform in ("twitter", "reddit", "polymarket"):
+        for platform in ("threads", "facebook", "polymarket"):
             actions = self.platform_actions.get(platform, [])
             if actions:
                 parts.append(_format_actions_full(platform, actions))
@@ -267,7 +267,7 @@ class RoundMemory:
                     f"[Current round — Day {rec.simulated_day}, "
                     f"{rec.simulated_hour:02d}:00 (round {current_round + 1})]"
                 ]
-                for platform in ("twitter", "reddit", "polymarket"):
+                for platform in ("threads", "facebook", "polymarket"):
                     actions = rec.platform_actions.get(platform, [])
                     if actions:
                         parts.append(_format_actions_full(platform, actions))

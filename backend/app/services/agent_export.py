@@ -44,10 +44,10 @@ This module fills that gap with one stdlib derivation:
 Design notes
 ------------
 
-* **Reuses ``reddit_profiles.json`` (+ ``polymarket_profiles.json``).**
+* **Reuses ``facebook_profiles.json`` (+ ``polymarket_profiles.json``).**
   Same lookup the transcript renderer and agent_sparklines_service use,
   so an agent's name + bio + persona match across every surface that
-  exposes them. First write wins; reddit_profiles takes precedence.
+  exposes them. First write wins; facebook_profiles takes precedence.
 
 * **Reuses ``trajectory.json`` for the belief layer.** ``final_stance``,
   ``final_position`` and ``rounds_participated`` come from
@@ -117,17 +117,17 @@ STANCE_THRESHOLD = 0.2
 
 
 def _load_profiles(sim_dir: str) -> List[Dict[str, Any]]:
-    """Load the agent roster — reddit_profiles.json first, then polymarket.
+    """Load the agent roster — facebook_profiles.json first, then polymarket.
 
     Returns a list keyed by ``user_id`` order of first appearance. Each
     entry is a copy of the on-disk dict so a downstream consumer mutating
-    the returned list can't poison the cached read. Reddit profile takes
+    the returned list can't poison the cached read. Facebook profile takes
     precedence on duplicate ``user_id`` so the persona surface matches
     the transcript renderer's choice.
     """
     seen_ids: set[int] = set()
     out: List[Dict[str, Any]] = []
-    for filename in ("reddit_profiles.json", "polymarket_profiles.json"):
+    for filename in ("facebook_profiles.json", "polymarket_profiles.json"):
         data = _safe_load_json(os.path.join(sim_dir or "", filename))
         if not isinstance(data, list):
             continue
@@ -358,7 +358,7 @@ def build_agent_export(
 ) -> Optional[Dict[str, Any]]:
     """Compose the agents.json envelope for a published sim.
 
-    Reads ``reddit_profiles.json`` (then ``polymarket_profiles.json``)
+    Reads ``facebook_profiles.json`` (then ``polymarket_profiles.json``)
     for the roster and ``trajectory.json`` for the belief layer. Returns
     ``None`` when no profile file produces a usable agent — the route
     handler translates that to a 404 ("not ready / no agent data") so a

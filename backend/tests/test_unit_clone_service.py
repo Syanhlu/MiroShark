@@ -50,8 +50,8 @@ def _write_state(sim_dir: Path, **overrides) -> dict:
         "simulation_id": sim_dir.name,
         "project_id": "proj_test123",
         "graph_id": "miroshark_graph_test",
-        "enable_twitter": True,
-        "enable_reddit": True,
+        "enable_threads": True,
+        "enable_facebook": True,
         "enable_polymarket": False,
         "polymarket_market_count": 1,
         "status": "completed",
@@ -129,8 +129,8 @@ def test_happy_path_payload_shape(tmp_path: Path):
     body = payload["clone_payload"]
     assert body["project_id"] == "proj_happy"
     assert body["graph_id"] == "miroshark_happy"
-    assert body["enable_twitter"] is True
-    assert body["enable_reddit"] is True
+    assert body["enable_threads"] is True
+    assert body["enable_facebook"] is True
     assert body["enable_polymarket"] is False
     assert body["polymarket_market_count"] == 1
     assert body["country"] is None
@@ -194,8 +194,8 @@ def test_platform_toggles_default_to_manager_defaults(tmp_path: Path):
     )
     payload = clone_service.build_clone_payload("sim_legacy", str(sim_dir))
     body = payload["clone_payload"]
-    assert body["enable_twitter"] is True
-    assert body["enable_reddit"] is True
+    assert body["enable_threads"] is True
+    assert body["enable_facebook"] is True
     assert body["enable_polymarket"] is False
 
 
@@ -347,8 +347,8 @@ def test_build_example_curl_is_deterministic():
     body = {
         "project_id": "p",
         "graph_id": "g",
-        "enable_twitter": True,
-        "enable_reddit": True,
+        "enable_threads": True,
+        "enable_facebook": True,
         "enable_polymarket": False,
         "polymarket_market_count": 1,
         "country": None,

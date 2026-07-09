@@ -3,8 +3,8 @@ Market-Media Bridge — connects Polymarket prices and social media sentiment.
 
 Shared state object that all three platform coroutines read/write to:
 - Polymarket loop writes current market prices after each round
-- Twitter/Reddit loops read prices and inject them into agent prompts
-- Twitter/Reddit loops write aggregate sentiment after each round
+- Threads/Facebook loops read prices and inject them into agent prompts
+- Threads/Facebook loops write aggregate sentiment after each round
 - Polymarket loop reads sentiment and injects it into trader prompts
 
 Since the three platform loops run concurrently via asyncio.gather()
@@ -27,7 +27,7 @@ class MarketSnapshot:
     # Each market: {market_id, question, price_yes, price_no, num_trades, price_delta}
 
     def to_social_media_prompt(self) -> str:
-        """Format market data for injection into Twitter/Reddit agent prompts."""
+        """Format market data for injection into Threads/Facebook agent prompts."""
         if not self.markets:
             return ""
 
@@ -80,7 +80,7 @@ class SentimentSnapshot:
 
         lines = ["# SOCIAL MEDIA SENTIMENT"]
         lines.append(
-            "This is what people on Twitter and Reddit are saying about the markets. "
+            "This is what people on Threads and Facebook are saying about the markets. "
             "Social media sentiment can signal information the market hasn't priced in yet, "
             "but it can also be noise. Use your judgment."
         )
@@ -133,12 +133,12 @@ class MarketMediaBridge:
         # In Polymarket loop, after each round:
         bridge.update_prices(polymarket_db_path, round_num)
 
-        # In Twitter/Reddit loop, before agent actions:
+        # In Threads/Facebook loop, before agent actions:
         prompt = bridge.get_market_prompt()
         inject_market_context(agent, prompt)
 
-        # In Twitter/Reddit loop, after each round:
-        bridge.update_sentiment(belief_states, actual_actions, round_num, "twitter")
+        # In Threads/Facebook loop, after each round:
+        bridge.update_sentiment(belief_states, actual_actions, round_num, "threads")
 
         # In Polymarket loop, before agent actions:
         prompt = bridge.get_sentiment_prompt()
@@ -204,7 +204,7 @@ class MarketMediaBridge:
             pass  # Non-critical — simulation continues without price broadcast
 
     def get_market_prompt(self) -> str:
-        """Called by Twitter/Reddit loops to get current market prices for agent injection."""
+        """Called by Threads/Facebook loops to get current market prices for agent injection."""
         if not self.latest_prices or not self.latest_prices.markets:
             return ""
         return self.latest_prices.to_social_media_prompt()
@@ -218,7 +218,7 @@ class MarketMediaBridge:
         round_num: int,
         platform: str,
     ):
-        """Called by Twitter/Reddit loops after each round to publish sentiment."""
+        """Called by Threads/Facebook loops after each round to publish sentiment."""
         topic_sentiments = {}
 
         # Aggregate belief positions across all agents

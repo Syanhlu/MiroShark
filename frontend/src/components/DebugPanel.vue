@@ -37,8 +37,8 @@
       <div class="debug-filters">
         <select v-model="filterPlatform" class="debug-select">
           <option value="">{{ $tr('All platforms', '所有平台', { de: 'Alle Plattformen', fr: 'Toutes les plateformes' }) }}</option>
-          <option value="twitter">Twitter</option>
-          <option value="reddit">Reddit</option>
+          <option value="threads">Threads</option>
+          <option value="facebook">Facebook</option>
           <option value="polymarket">Polymarket</option>
         </select>
         <input

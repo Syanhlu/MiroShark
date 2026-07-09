@@ -1,9 +1,9 @@
 """
 Wonderwall multi-platform parallel simulation preset script
-Runs Twitter, Reddit, and Polymarket simulations concurrently, reading the same configuration file
+Runs Threads, Facebook, and Polymarket simulations concurrently, reading the same configuration file
 
 Features:
-- Multi-platform (Twitter + Reddit + Polymarket) parallel simulation
+- Multi-platform (Threads + Facebook + Polymarket) parallel simulation
 - Polymarket prediction market via Wonderwall's SimulationConfig framework
 - Cross-platform awareness: agents see their activity on other platforms (--cross-platform)
 - Does not close the environment immediately after simulation; enters command waiting mode
@@ -15,16 +15,18 @@ Usage:
     python run_parallel_simulation.py --config simulation_config.json
     python run_parallel_simulation.py --config simulation_config.json --cross-platform  # Agents aware of their activity on other platforms
     python run_parallel_simulation.py --config simulation_config.json --no-wait  # Close immediately after completion
-    python run_parallel_simulation.py --config simulation_config.json --twitter-only
-    python run_parallel_simulation.py --config simulation_config.json --reddit-only
+    python run_parallel_simulation.py --config simulation_config.json --threads-only
+    python run_parallel_simulation.py --config simulation_config.json --facebook-only
     python run_parallel_simulation.py --config simulation_config.json --polymarket-only
 
 Log structure:
     sim_xxx/
-    ├── twitter/
-    │   └── actions.jsonl    # Twitter platform action log
-    ├── reddit/
-    │   └── actions.jsonl    # Reddit platform action log
+    ├── threads/
+    │   └── actions.jsonl     # Threads platform action log (written via
+    │                         # SimulationLogManager.get_threads_logger()).
+    ├── facebook/
+    │   └── actions.jsonl     # Facebook platform action log (written via
+    │                         # get_facebook_logger()).
     ├── simulation.log       # Main simulation process log
     └── run_state.json       # Run state (for API queries)
 """
@@ -100,7 +102,7 @@ if os.path.exists(_env_file):
 
 # Apply the locale chosen in the UI (forwarded as MIROSHARK_LOCALE by the
 # parent Flask process). This activates the prompt registry's locale
-# fallback so Twitter/Reddit/Polymarket personas speak the right language.
+# fallback so Threads/Facebook/Polymarket personas speak the right language.
 try:
     from app.utils.i18n import set_active_locale as _set_active_locale
     _locale_env = os.environ.get('MIROSHARK_LOCALE', '').strip()
@@ -135,10 +137,15 @@ def disable_wonderwall_logging():
     Disable verbose log output from the Wonderwall library
     Wonderwall logs are too verbose (logging each agent's observations and actions); we use our own action_logger
     """
-    # Disable all Wonderwall loggers
+    # Disable all Wonderwall loggers.
+    # "social.twitter" is intentionally NOT renamed: it's the actual logger
+    # name emitted by wonderwall/social_platform/platform.py's Platform class
+    # (`twitter_log = logging.getLogger(name="social.twitter")`), which is
+    # shared by every preset (Threads, Facebook, TikTok all use the same
+    # Platform class) and out of scope for this rename.
     wonderwall_loggers = [
         "social.agent",
-        "social.twitter", 
+        "social.twitter",
         "social.rec",
         "wonderwall.env",
         "table",
@@ -236,45 +243,29 @@ try:
         ActionType,
         LLMAction,
         ManualAction,
-        generate_twitter_agent_graph,
-        generate_reddit_agent_graph,
+        generate_threads_agent_graph,
+        generate_facebook_agent_graph,
         AgentGraph,
     )
     from wonderwall.social_agent.agent import SocialAgent
     from wonderwall.social_platform.config import UserInfo
     from wonderwall.simulations.polymarket import polymarket_simulation
+    from wonderwall.simulations.social_media import (
+        threads_simulation,
+        facebook_simulation,
+    )
 except ImportError as e:
     print(f"Error: Missing dependency {e}")
     print("Please install first: pip install -e ../wonderwall camel-ai")
     sys.exit(1)
 
 
-# Available Twitter actions (excluding INTERVIEW, which can only be triggered manually via ManualAction)
-TWITTER_ACTIONS = [
-    ActionType.CREATE_POST,
-    ActionType.LIKE_POST,
-    ActionType.REPOST,
-    ActionType.FOLLOW,
-    ActionType.DO_NOTHING,
-    ActionType.QUOTE_POST,
-]
-
-# Available Reddit actions (excluding INTERVIEW, which can only be triggered manually via ManualAction)
-REDDIT_ACTIONS = [
-    ActionType.LIKE_POST,
-    ActionType.DISLIKE_POST,
-    ActionType.CREATE_POST,
-    ActionType.CREATE_COMMENT,
-    ActionType.LIKE_COMMENT,
-    ActionType.DISLIKE_COMMENT,
-    ActionType.SEARCH_POSTS,
-    ActionType.SEARCH_USER,
-    ActionType.TREND,
-    ActionType.REFRESH,
-    ActionType.DO_NOTHING,
-    ActionType.FOLLOW,
-    ActionType.MUTE,
-]
+# Available actions per platform (excluding INTERVIEW, which can only be
+# triggered manually via ManualAction). Sourced from ActionType's
+# get_default_*_actions() classmethods so these stay in sync with
+# wonderwall.simulations.social_media.{threads,facebook}_simulation.default_actions.
+THREADS_ACTIONS = ActionType.get_default_threads_actions()
+FACEBOOK_ACTIONS = ActionType.get_default_facebook_actions()
 
 
 # IPC-related constants
@@ -291,22 +282,33 @@ class ParallelIPCHandler:
     """
     Dual-platform IPC command handler
 
-    Manages environments for both platforms and handles Interview commands
+    Manages environments for both platforms and handles Interview commands.
+
+    NOTE: the `platform` string values compared/returned throughout this
+    class ("twitter" / "reddit") are intentionally NOT renamed to
+    "threads" / "facebook". They are a wire-format contract with the
+    IPC command producer (app/services/simulation_ipc.py + whatever calls
+    it in app/services|api) and with backend/scripts/round_memory.py,
+    cross_platform_digest.py, belief_integration.py and market_media_bridge.py
+    — none of which are in scope for this rename. Renaming only this side
+    would silently break interview routing and cross-platform/belief
+    features rather than raise an error. See the platform-rename report for
+    the full list of files that need a coordinated follow-up.
     """
     
     def __init__(
         self,
         simulation_dir: str,
-        twitter_env=None,
-        twitter_agent_graph=None,
-        reddit_env=None,
-        reddit_agent_graph=None
+        threads_env=None,
+        threads_agent_graph=None,
+        facebook_env=None,
+        facebook_agent_graph=None
     ):
         self.simulation_dir = simulation_dir
-        self.twitter_env = twitter_env
-        self.twitter_agent_graph = twitter_agent_graph
-        self.reddit_env = reddit_env
-        self.reddit_agent_graph = reddit_agent_graph
+        self.threads_env = threads_env
+        self.threads_agent_graph = threads_agent_graph
+        self.facebook_env = facebook_env
+        self.facebook_agent_graph = facebook_agent_graph
         
         self.commands_dir = os.path.join(simulation_dir, IPC_COMMANDS_DIR)
         self.responses_dir = os.path.join(simulation_dir, IPC_RESPONSES_DIR)
@@ -322,8 +324,8 @@ class ParallelIPCHandler:
             json.dump({
                 "status": status,
                 "pid": os.getpid(),
-                "twitter_available": self.twitter_env is not None,
-                "reddit_available": self.reddit_env is not None,
+                "twitter_available": self.threads_env is not None,
+                "reddit_available": self.facebook_env is not None,
                 "timestamp": datetime.now().isoformat()
             }, f, ensure_ascii=False, indent=2)
     
@@ -381,10 +383,10 @@ class ParallelIPCHandler:
         Returns:
             (env, agent_graph, platform_name) or (None, None, None)
         """
-        if platform == "twitter" and self.twitter_env:
-            return self.twitter_env, self.twitter_agent_graph, "twitter"
-        elif platform == "reddit" and self.reddit_env:
-            return self.reddit_env, self.reddit_agent_graph, "reddit"
+        if platform == "twitter" and self.threads_env:
+            return self.threads_env, self.threads_agent_graph, "twitter"
+        elif platform == "reddit" and self.facebook_env:
+            return self.facebook_env, self.facebook_agent_graph, "reddit"
         else:
             return None, None, None
     
@@ -425,8 +427,8 @@ class ParallelIPCHandler:
             agent_id: Agent ID
             prompt: Interview question
             platform: Specified platform (optional)
-                - "twitter": Interview on Twitter platform only
-                - "reddit": Interview on Reddit platform only
+                - "twitter": Interview on Threads platform only
+                - "reddit": Interview on Facebook platform only
                 - None/unspecified: Interview on both platforms simultaneously, return consolidated results
 
         Returns:
@@ -446,7 +448,7 @@ class ParallelIPCHandler:
                 return True
         
         # No platform specified: interview on both platforms simultaneously
-        if not self.twitter_env and not self.reddit_env:
+        if not self.threads_env and not self.facebook_env:
             self.send_response(command_id, "failed", error="No simulation environment available")
             return False
         
@@ -461,11 +463,11 @@ class ParallelIPCHandler:
         tasks = []
         platforms_to_interview = []
         
-        if self.twitter_env:
+        if self.threads_env:
             tasks.append(self._interview_single_platform(agent_id, prompt, "twitter"))
             platforms_to_interview.append("twitter")
         
-        if self.reddit_env:
+        if self.facebook_env:
             tasks.append(self._interview_single_platform(agent_id, prompt, "reddit"))
             platforms_to_interview.append("reddit")
         
@@ -495,8 +497,8 @@ class ParallelIPCHandler:
             command_id: Command ID
             interviews: [{"agent_id": int, "prompt": str, "platform": str(optional)}, ...]
             platform: Default platform (can be overridden per interview item)
-                - "twitter": Interview on Twitter platform only
-                - "reddit": Interview on Reddit platform only
+                - "twitter": Interview on Threads platform only
+                - "reddit": Interview on Facebook platform only
                 - None/unspecified: Interview each Agent on both platforms simultaneously
         """
         # Group by platform
@@ -516,38 +518,38 @@ class ParallelIPCHandler:
         
         # Split both_platforms_interviews into the two platforms
         if both_platforms_interviews:
-            if self.twitter_env:
+            if self.threads_env:
                 twitter_interviews.extend(both_platforms_interviews)
-            if self.reddit_env:
+            if self.facebook_env:
                 reddit_interviews.extend(both_platforms_interviews)
         
         results = {}
         twitter_error: str | None = None
         reddit_error: str | None = None
 
-        # Process Twitter platform interviews
-        if twitter_interviews and self.twitter_env:
+        # Process Threads platform interviews
+        if twitter_interviews and self.threads_env:
             try:
                 twitter_actions = {}
                 for interview in twitter_interviews:
                     agent_id = interview.get("agent_id")
                     prompt = interview.get("prompt", "")
                     try:
-                        agent = self.twitter_agent_graph.get_agent(agent_id)
+                        agent = self.threads_agent_graph.get_agent(agent_id)
                         twitter_actions[agent] = ManualAction(
                             action_type=ActionType.INTERVIEW,
                             action_args={"prompt": prompt}
                         )
                     except Exception as e:
-                        print(f"  Warning: Unable to get Twitter Agent {agent_id}: {e}")
+                        print(f"  Warning: Unable to get Threads Agent {agent_id}: {e}")
 
                 if twitter_actions:
-                    print(f"  Twitter: starting {len(twitter_actions)} interview(s)...")
+                    print(f"  Threads: starting {len(twitter_actions)} interview(s)...")
                     await asyncio.wait_for(
-                        self.twitter_env.step(twitter_actions),
+                        self.threads_env.step(twitter_actions),
                         timeout=220,
                     )
-                    print(f"  Twitter: env.step() completed")
+                    print(f"  Threads: env.step() completed")
 
                     for interview in twitter_interviews:
                         agent_id = interview.get("agent_id")
@@ -555,35 +557,35 @@ class ParallelIPCHandler:
                         result["platform"] = "twitter"
                         results[f"twitter_{agent_id}"] = result
             except asyncio.TimeoutError:
-                twitter_error = "Twitter interview timed out after 220 s (thinking-model LLM too slow)"
-                print(f"  Twitter batch Interview timed out")
+                twitter_error = "Threads interview timed out after 220 s (thinking-model LLM too slow)"
+                print(f"  Threads batch Interview timed out")
             except Exception as e:
                 twitter_error = str(e)
-                print(f"  Twitter batch Interview failed: {e}")
+                print(f"  Threads batch Interview failed: {e}")
 
-        # Process Reddit platform interviews
-        if reddit_interviews and self.reddit_env:
+        # Process Facebook platform interviews
+        if reddit_interviews and self.facebook_env:
             try:
                 reddit_actions = {}
                 for interview in reddit_interviews:
                     agent_id = interview.get("agent_id")
                     prompt = interview.get("prompt", "")
                     try:
-                        agent = self.reddit_agent_graph.get_agent(agent_id)
+                        agent = self.facebook_agent_graph.get_agent(agent_id)
                         reddit_actions[agent] = ManualAction(
                             action_type=ActionType.INTERVIEW,
                             action_args={"prompt": prompt}
                         )
                     except Exception as e:
-                        print(f"  Warning: Unable to get Reddit Agent {agent_id}: {e}")
+                        print(f"  Warning: Unable to get Facebook Agent {agent_id}: {e}")
 
                 if reddit_actions:
-                    print(f"  Reddit: starting {len(reddit_actions)} interview(s)...")
+                    print(f"  Facebook: starting {len(reddit_actions)} interview(s)...")
                     await asyncio.wait_for(
-                        self.reddit_env.step(reddit_actions),
+                        self.facebook_env.step(reddit_actions),
                         timeout=220,
                     )
-                    print(f"  Reddit: env.step() completed")
+                    print(f"  Facebook: env.step() completed")
 
                     for interview in reddit_interviews:
                         agent_id = interview.get("agent_id")
@@ -591,11 +593,11 @@ class ParallelIPCHandler:
                         result["platform"] = "reddit"
                         results[f"reddit_{agent_id}"] = result
             except asyncio.TimeoutError:
-                reddit_error = "Reddit interview timed out after 220 s (thinking-model LLM too slow)"
-                print(f"  Reddit batch Interview timed out")
+                reddit_error = "Facebook interview timed out after 220 s (thinking-model LLM too slow)"
+                print(f"  Facebook batch Interview timed out")
             except Exception as e:
                 reddit_error = str(e)
-                print(f"  Reddit batch Interview failed: {e}")
+                print(f"  Facebook batch Interview failed: {e}")
 
         if results:
             self.send_response(command_id, "completed", result={
@@ -779,7 +781,7 @@ def fetch_new_actions_from_db(
         cursor = conn.cursor()
         
         # Use rowid to track processed records (rowid is SQLite's built-in auto-increment field)
-        # This avoids created_at format differences (Twitter uses integers, Reddit uses datetime strings)
+        # This avoids created_at format differences (Threads uses integers, Facebook uses datetime strings)
         cursor.execute("""
             SELECT rowid, user_id, action, info
             FROM trace
@@ -1304,7 +1306,7 @@ class PlatformSimulation:
         self.total_actions = 0
 
 
-async def run_twitter_simulation(
+async def run_threads_simulation(
     config: Dict[str, Any],
     simulation_dir: str,
     action_logger: Optional[PlatformActionLogger] = None,
@@ -1314,7 +1316,7 @@ async def run_twitter_simulation(
     cross_platform_log: Optional[CrossPlatformLog] = None,
     market_media_bridge: Optional[MarketMediaBridge] = None,
 ) -> PlatformSimulation:
-    """Run Twitter simulation
+    """Run Threads simulation
 
     Args:
         config: Simulation configuration
@@ -1331,24 +1333,25 @@ async def run_twitter_simulation(
     
     def log_info(msg):
         if main_logger:
-            main_logger.info(f"[Twitter] {msg}")
-        print(f"[Twitter] {msg}")
+            main_logger.info(f"[Threads] {msg}")
+        print(f"[Threads] {msg}")
     
     log_info("Initializing...")
 
-    # Twitter uses the general LLM configuration
+    # Threads uses the general LLM configuration
     model = create_model(config, use_boost=False)
     
-    # Wonderwall Twitter uses CSV format
-    profile_path = os.path.join(simulation_dir, "twitter_profiles.csv")
+    # Wonderwall Threads uses CSV format
+    profile_path = os.path.join(simulation_dir, "threads_profiles.csv")
     if not os.path.exists(profile_path):
         log_info(f"Error: Profile file not found: {profile_path}")
         return result
     
-    result.agent_graph = await generate_twitter_agent_graph(
+    result.agent_graph = await generate_threads_agent_graph(
         profile_path=profile_path,
         model=model,
-        available_actions=TWITTER_ACTIONS,
+        available_actions=THREADS_ACTIONS,
+        simulation=threads_simulation,
     )
     
     # Get real Agent name mapping from config (using entity_name instead of default Agent_X)
@@ -1360,13 +1363,13 @@ async def run_twitter_simulation(
 
     is_resume = start_round > 0
 
-    db_path = os.path.join(simulation_dir, "twitter_simulation.db")
+    db_path = os.path.join(simulation_dir, "threads_simulation.db")
     if not is_resume and os.path.exists(db_path):
         os.remove(db_path)
 
     result.env = wonderwall.make(
         agent_graph=result.agent_graph,
-        platform=wonderwall.DefaultPlatformType.TWITTER,
+        simulation=threads_simulation,
         database_path=db_path,
         semaphore=60,  # Concurrent LLM requests per platform (increase for faster APIs)
     )
@@ -1442,7 +1445,7 @@ async def run_twitter_simulation(
         if total_rounds < original_rounds:
             log_info(f"Rounds truncated: {original_rounds} -> {total_rounds} (max_rounds={max_rounds})")
     
-    # Initialize belief tracking for Twitter
+    # Initialize belief tracking for Threads
     belief_tracker = BeliefTracker(config, simulation_dir, "twitter")
     log_info(f"Belief tracking: {len(belief_tracker.topics)} topics")
 
@@ -1620,7 +1623,7 @@ async def run_twitter_simulation(
     return result
 
 
-async def run_reddit_simulation(
+async def run_facebook_simulation(
     config: Dict[str, Any],
     simulation_dir: str,
     action_logger: Optional[PlatformActionLogger] = None,
@@ -1630,7 +1633,7 @@ async def run_reddit_simulation(
     cross_platform_log: Optional[CrossPlatformLog] = None,
     market_media_bridge: Optional[MarketMediaBridge] = None,
 ) -> PlatformSimulation:
-    """Run Reddit simulation
+    """Run Facebook simulation
 
     Args:
         config: Simulation configuration
@@ -1647,23 +1650,24 @@ async def run_reddit_simulation(
     
     def log_info(msg):
         if main_logger:
-            main_logger.info(f"[Reddit] {msg}")
-        print(f"[Reddit] {msg}")
+            main_logger.info(f"[Facebook] {msg}")
+        print(f"[Facebook] {msg}")
     
     log_info("Initializing...")
 
-    # Reddit uses the boost LLM configuration (if available, otherwise falls back to general config)
+    # Facebook uses the boost LLM configuration (if available, otherwise falls back to general config)
     model = create_model(config, use_boost=True)
     
-    profile_path = os.path.join(simulation_dir, "reddit_profiles.json")
+    profile_path = os.path.join(simulation_dir, "facebook_profiles.json")
     if not os.path.exists(profile_path):
         log_info(f"Error: Profile file not found: {profile_path}")
         return result
 
-    result.agent_graph = await generate_reddit_agent_graph(
+    result.agent_graph = await generate_facebook_agent_graph(
         profile_path=profile_path,
         model=model,
-        available_actions=REDDIT_ACTIONS,
+        available_actions=FACEBOOK_ACTIONS,
+        simulation=facebook_simulation,
     )
     
     # Get real Agent name mapping from config (using entity_name instead of default Agent_X)
@@ -1675,13 +1679,13 @@ async def run_reddit_simulation(
 
     is_resume = start_round > 0
 
-    db_path = os.path.join(simulation_dir, "reddit_simulation.db")
+    db_path = os.path.join(simulation_dir, "facebook_simulation.db")
     if not is_resume and os.path.exists(db_path):
         os.remove(db_path)
 
     result.env = wonderwall.make(
         agent_graph=result.agent_graph,
-        platform=wonderwall.DefaultPlatformType.REDDIT,
+        simulation=facebook_simulation,
         database_path=db_path,
         semaphore=60,  # Concurrent LLM requests per platform (increase for faster APIs)
     )
@@ -1765,7 +1769,7 @@ async def run_reddit_simulation(
         if total_rounds < original_rounds:
             log_info(f"Rounds truncated: {original_rounds} -> {total_rounds} (max_rounds={max_rounds})")
     
-    # Initialize belief tracking for Reddit
+    # Initialize belief tracking for Facebook
     belief_tracker = BeliefTracker(config, simulation_dir, "reddit")
     log_info(f"Belief tracking: {len(belief_tracker.topics)} topics")
 
@@ -2332,20 +2336,33 @@ async def run_polymarket_simulation(
 async def run_synchronized_simulation(
     config: Dict[str, Any],
     simulation_dir: str,
-    twitter_logger: Optional[PlatformActionLogger] = None,
-    reddit_logger: Optional[PlatformActionLogger] = None,
+    threads_logger: Optional[PlatformActionLogger] = None,
+    facebook_logger: Optional[PlatformActionLogger] = None,
     polymarket_logger: Optional[PlatformActionLogger] = None,
     main_logger: Optional[SimulationLogManager] = None,
     max_rounds: Optional[int] = None,
     start_round: int = 0,
     cross_platform_log: Optional[CrossPlatformLog] = None,
-    has_twitter: bool = False,
-    has_reddit: bool = False,
+    has_threads: bool = False,
+    has_facebook: bool = False,
     has_polymarket: bool = False,
 ) -> Tuple[Optional[PlatformSimulation], Optional[PlatformSimulation], Optional[PlatformSimulation]]:
     """Run all platforms in lock-step: one round at a time across all platforms.
 
-    Returns (twitter_result, reddit_result, polymarket_result).
+    Returns (threads_result, facebook_result, polymarket_result).
+
+    NOTE: within this function, the literal strings "twitter"/"reddit" (not
+    "threads"/"facebook") are still passed to round_memory.record(),
+    cross_platform_log.record()/build_digest(exclude_platform=...),
+    BeliefTracker(config, dir, ...), and bridge.update_sentiment(...).
+    Those are unrenamed, out-of-scope sibling modules
+    (backend/scripts/round_memory.py, cross_platform_digest.py,
+    belief_integration.py, market_media_bridge.py) with internal logic keyed
+    to the old platform names (e.g. round_memory.py iterates a hardcoded
+    ("twitter", "reddit", "polymarket") tuple). Renaming the caller side only
+    would silently blank out cross-platform awareness/belief context instead
+    of raising an error, so these specific call sites intentionally keep the
+    old strings until those sibling files are renamed too.
     """
     def log_info(msg):
         if main_logger:
@@ -2374,61 +2391,63 @@ async def run_synchronized_simulation(
     log_info("Round Memory: ENABLED")
 
     # ── Setup phase: initialize all platform environments in parallel ──
-    twitter_result = None
-    reddit_result = None
+    threads_result = None
+    facebook_result = None
     polymarket_result = None
 
-    twitter_db = os.path.join(simulation_dir, "twitter_simulation.db")
-    reddit_db = os.path.join(simulation_dir, "reddit_simulation.db")
+    threads_db = os.path.join(simulation_dir, "threads_simulation.db")
+    facebook_db = os.path.join(simulation_dir, "facebook_simulation.db")
     polymarket_db = os.path.join(simulation_dir, "polymarket_simulation.db")
 
-    if has_twitter:
-        twitter_result = PlatformSimulation()
-        profile_path = os.path.join(simulation_dir, "twitter_profiles.csv")
-        twitter_result.agent_graph = await generate_twitter_agent_graph(
-            profile_path=profile_path, model=model, available_actions=TWITTER_ACTIONS,
+    if has_threads:
+        threads_result = PlatformSimulation()
+        profile_path = os.path.join(simulation_dir, "threads_profiles.csv")
+        threads_result.agent_graph = await generate_threads_agent_graph(
+            profile_path=profile_path, model=model, available_actions=THREADS_ACTIONS,
+            simulation=threads_simulation,
         )
-        for agent_id, agent in twitter_result.agent_graph.get_agents():
+        for agent_id, agent in threads_result.agent_graph.get_agents():
             if agent_id not in agent_names:
                 agent_names[agent_id] = getattr(agent, 'name', f'Agent_{agent_id}')
-        if start_round == 0 and os.path.exists(twitter_db):
-            os.remove(twitter_db)
-        twitter_result.env = wonderwall.make(
-            agent_graph=twitter_result.agent_graph,
-            platform=wonderwall.DefaultPlatformType.TWITTER,
-            database_path=twitter_db, semaphore=60,
+        if start_round == 0 and os.path.exists(threads_db):
+            os.remove(threads_db)
+        threads_result.env = wonderwall.make(
+            agent_graph=threads_result.agent_graph,
+            simulation=threads_simulation,
+            database_path=threads_db, semaphore=60,
         )
-        await twitter_result.env.reset()
-        log_info("[Twitter] Environment ready")
+        await threads_result.env.reset()
+        log_info("[Threads] Environment ready")
         try:
             from wonderwall.social_platform.recsys import get_twhin_tokenizer, get_twhin_model
             import torch as _torch
             _device = 'cuda' if _torch.cuda.is_available() else 'cpu'
-            log_info("[Twitter] Loading twhin-bert-base recommendation model…")
+            log_info("[Threads] Loading twhin-bert-base recommendation model…")
             get_twhin_tokenizer()
             get_twhin_model(_device)
-            log_info("[Twitter] twhin-bert-base ready")
+            log_info("[Threads] twhin-bert-base ready")
         except Exception as _e:
-            log_info(f"[Twitter] twhin-bert pre-warm failed (non-fatal): {_e}")
+            log_info(f"[Threads] twhin-bert pre-warm failed (non-fatal): {_e}")
 
-    if has_reddit:
-        reddit_result = PlatformSimulation()
-        profile_path = os.path.join(simulation_dir, "reddit_profiles.json")
-        reddit_result.agent_graph = await generate_reddit_agent_graph(
-            profile_path=profile_path, model=model, available_actions=REDDIT_ACTIONS,
+    if has_facebook:
+        facebook_result = PlatformSimulation()
+        profile_path = os.path.join(simulation_dir, "facebook_profiles.json")
+        facebook_result.agent_graph = await generate_facebook_agent_graph(
+            profile_path=profile_path, model=model, available_actions=FACEBOOK_ACTIONS,
+            simulation=facebook_simulation,
         )
-        for agent_id, agent in reddit_result.agent_graph.get_agents():
+        for agent_id, agent in facebook_result.agent_graph.get_agents():
             if agent_id not in agent_names:
                 agent_names[agent_id] = getattr(agent, 'name', f'Agent_{agent_id}')
-        if start_round == 0 and os.path.exists(reddit_db):
-            os.remove(reddit_db)
-        reddit_result.env = wonderwall.make(
-            agent_graph=reddit_result.agent_graph,
-            platform=wonderwall.DefaultPlatformType.REDDIT,
-            database_path=reddit_db, semaphore=60,
+        if start_round == 0 and os.path.exists(facebook_db):
+            os.remove(facebook_db)
+        facebook_result.env = wonderwall.make(
+            agent_graph=facebook_result.agent_graph,
+            simulation=facebook_simulation,
+            database_path=facebook_db, semaphore=60,
         )
-        await reddit_result.env.reset()
-        log_info("[Reddit] Environment ready")
+        await facebook_result.env.reset()
+        log_info("[Facebook] Environment ready")
 
     if has_polymarket:
         polymarket_result = PlatformSimulation()
@@ -2452,8 +2471,8 @@ async def run_synchronized_simulation(
     # Universal agent guidelines (e.g. "no hashtags"), injected once per
     # platform. System messages persist, so this covers the whole run.
     for _label, _result in (
-        ("Twitter", twitter_result),
-        ("Reddit", reddit_result),
+        ("Threads", threads_result),
+        ("Facebook", facebook_result),
         ("Polymarket", polymarket_result),
     ):
         if _result is not None:
@@ -2462,15 +2481,15 @@ async def run_synchronized_simulation(
                 log_info(f"[{_label}] Posting rules injected into {_n} agents")
 
     # ── Initialize belief trackers ──
-    twitter_belief = BeliefTracker(config, simulation_dir, "twitter") if has_twitter else None
-    reddit_belief = BeliefTracker(config, simulation_dir, "reddit") if has_reddit else None
+    threads_belief = BeliefTracker(config, simulation_dir, "twitter") if has_threads else None
+    facebook_belief = BeliefTracker(config, simulation_dir, "reddit") if has_facebook else None
     polymarket_belief = BeliefTracker(config, simulation_dir, "polymarket") if has_polymarket else None
 
     # ── Action loggers ──
-    if twitter_logger:
-        twitter_logger.log_simulation_start(config)
-    if reddit_logger:
-        reddit_logger.log_simulation_start(config)
+    if threads_logger:
+        threads_logger.log_simulation_start(config)
+    if facebook_logger:
+        facebook_logger.log_simulation_start(config)
     if polymarket_logger:
         polymarket_logger.log_simulation_start(config)
 
@@ -2479,7 +2498,7 @@ async def run_synchronized_simulation(
     initial_posts = event_config.get("initial_posts", [])
     if start_round == 0 and initial_posts:
         for platform_result, platform_name in [
-            (twitter_result, "twitter"), (reddit_result, "reddit")
+            (threads_result, "threads"), (facebook_result, "facebook")
         ]:
             if not platform_result:
                 continue
@@ -2531,8 +2550,8 @@ async def run_synchronized_simulation(
     if max_rounds is not None and max_rounds > 0:
         total_rounds = min(total_rounds, max_rounds)
 
-    twitter_last_rowid = 0
-    reddit_last_rowid = 0
+    threads_last_rowid = 0
+    facebook_last_rowid = 0
     polymarket_last_rowid = 0
 
     # ── Per-agent MCP bridge (optional) ─────────────────────────────────────
@@ -2554,7 +2573,7 @@ async def run_synchronized_simulation(
                 mcp_bridge = MCPAgentBridge(registry)
                 mcp_server_names = list(registry.keys())
                 # Collect tools_enabled agent_ids from profile JSONs.
-                for fname in ("reddit_profiles.json", "polymarket_profiles.json"):
+                for fname in ("facebook_profiles.json", "polymarket_profiles.json"):
                     fpath = os.path.join(simulation_dir, fname)
                     if not os.path.exists(fpath):
                         continue
@@ -2622,13 +2641,13 @@ async def run_synchronized_simulation(
 
         platform_tasks = []
 
-        if twitter_result:
-            active = get_active_agents_for_round(twitter_result.env, config, simulated_hour, round_num)
+        if threads_result:
+            active = get_active_agents_for_round(threads_result.env, config, simulated_hour, round_num)
             if active:
                 # Inject beliefs BEFORE the round so agents act on current stance
-                if twitter_belief and round_num > 0:
+                if threads_belief and round_num > 0:
                     for agent_id, agent in active:
-                        bs = twitter_belief.belief_states.get(agent_id)
+                        bs = threads_belief.belief_states.get(agent_id)
                         if bs:
                             inject_belief_context(agent, bs.to_prompt_text())
                 if memory_ctx:
@@ -2649,19 +2668,19 @@ async def run_synchronized_simulation(
                     active, mcp_bridge, mcp_server_names, mcp_tool_agent_ids, mcp_pending_results
                 )
 
-                async def _step_twitter(active_agents=active):
+                async def _step_threads(active_agents=active):
                     actions = {agent: LLMAction() for _, agent in active_agents}
-                    await twitter_result.env.step(actions)
+                    await threads_result.env.step(actions)
                     return active_agents
 
-                platform_tasks.append(("twitter", _step_twitter()))
+                platform_tasks.append(("twitter", _step_threads()))
 
-        if reddit_result:
-            active = get_active_agents_for_round(reddit_result.env, config, simulated_hour, round_num)
+        if facebook_result:
+            active = get_active_agents_for_round(facebook_result.env, config, simulated_hour, round_num)
             if active:
-                if reddit_belief and round_num > 0:
+                if facebook_belief and round_num > 0:
                     for agent_id, agent in active:
-                        bs = reddit_belief.belief_states.get(agent_id)
+                        bs = facebook_belief.belief_states.get(agent_id)
                         if bs:
                             inject_belief_context(agent, bs.to_prompt_text())
                 if memory_ctx:
@@ -2682,12 +2701,12 @@ async def run_synchronized_simulation(
                     active, mcp_bridge, mcp_server_names, mcp_tool_agent_ids, mcp_pending_results
                 )
 
-                async def _step_reddit(active_agents=active):
+                async def _step_facebook(active_agents=active):
                     actions = {agent: LLMAction() for _, agent in active_agents}
-                    await reddit_result.env.step(actions)
+                    await facebook_result.env.step(actions)
                     return active_agents
 
-                platform_tasks.append(("reddit", _step_reddit()))
+                platform_tasks.append(("reddit", _step_facebook()))
 
         if polymarket_result:
             active = get_active_agents_for_round(polymarket_result.env, config, simulated_hour, round_num)
@@ -2759,36 +2778,36 @@ async def run_synchronized_simulation(
 
         # ── Post-round: fetch actions, update beliefs, record to memory ──
         if "twitter" in platform_results:
-            actual_actions, twitter_last_rowid = fetch_new_actions_from_db(twitter_db, twitter_last_rowid, agent_names)
+            actual_actions, threads_last_rowid = fetch_new_actions_from_db(threads_db, threads_last_rowid, agent_names)
             _mcp_dispatch_from_actions(actual_actions, mcp_bridge, mcp_tool_agent_ids, mcp_pending_results)
-            if twitter_belief:
-                twitter_belief.after_round(twitter_db, twitter_result.env, platform_results["twitter"], round_num, actual_actions)
-                bridge.update_sentiment(twitter_belief.belief_states, actual_actions, round_num, "twitter")
+            if threads_belief:
+                threads_belief.after_round(threads_db, threads_result.env, platform_results["twitter"], round_num, actual_actions)
+                bridge.update_sentiment(threads_belief.belief_states, actual_actions, round_num, "twitter")
             if cross_platform_log and actual_actions:
                 cross_platform_log.record("twitter", actual_actions)
             round_memory.record("twitter", round_num, actual_actions)
-            if twitter_logger:
-                twitter_logger.log_round_start(round_num + 1, simulated_hour)
+            if threads_logger:
+                threads_logger.log_round_start(round_num + 1, simulated_hour)
                 for a in actual_actions:
-                    twitter_logger.log_action(round_num=round_num+1, agent_id=a['agent_id'], agent_name=a['agent_name'], action_type=a['action_type'], action_args=a['action_args'])
-                twitter_logger.log_round_end(round_num + 1, len(actual_actions))
-            twitter_result.total_actions += len(actual_actions)
+                    threads_logger.log_action(round_num=round_num+1, agent_id=a['agent_id'], agent_name=a['agent_name'], action_type=a['action_type'], action_args=a['action_args'])
+                threads_logger.log_round_end(round_num + 1, len(actual_actions))
+            threads_result.total_actions += len(actual_actions)
 
         if "reddit" in platform_results:
-            actual_actions, reddit_last_rowid = fetch_new_actions_from_db(reddit_db, reddit_last_rowid, agent_names)
+            actual_actions, facebook_last_rowid = fetch_new_actions_from_db(facebook_db, facebook_last_rowid, agent_names)
             _mcp_dispatch_from_actions(actual_actions, mcp_bridge, mcp_tool_agent_ids, mcp_pending_results)
-            if reddit_belief:
-                reddit_belief.after_round(reddit_db, reddit_result.env, platform_results["reddit"], round_num, actual_actions)
-                bridge.update_sentiment(reddit_belief.belief_states, actual_actions, round_num, "reddit")
+            if facebook_belief:
+                facebook_belief.after_round(facebook_db, facebook_result.env, platform_results["reddit"], round_num, actual_actions)
+                bridge.update_sentiment(facebook_belief.belief_states, actual_actions, round_num, "reddit")
             if cross_platform_log and actual_actions:
                 cross_platform_log.record("reddit", actual_actions)
             round_memory.record("reddit", round_num, actual_actions)
-            if reddit_logger:
-                reddit_logger.log_round_start(round_num + 1, simulated_hour)
+            if facebook_logger:
+                facebook_logger.log_round_start(round_num + 1, simulated_hour)
                 for a in actual_actions:
-                    reddit_logger.log_action(round_num=round_num+1, agent_id=a['agent_id'], agent_name=a['agent_name'], action_type=a['action_type'], action_args=a['action_args'])
-                reddit_logger.log_round_end(round_num + 1, len(actual_actions))
-            reddit_result.total_actions += len(actual_actions)
+                    facebook_logger.log_action(round_num=round_num+1, agent_id=a['agent_id'], agent_name=a['agent_name'], action_type=a['action_type'], action_args=a['action_args'])
+                facebook_logger.log_round_end(round_num + 1, len(actual_actions))
+            facebook_result.total_actions += len(actual_actions)
 
         if "polymarket" in platform_results:
             bridge.update_prices(polymarket_db, round_num)
@@ -2814,10 +2833,10 @@ async def run_synchronized_simulation(
             elapsed = (datetime.now() - start_time).total_seconds()
             progress = (round_num + 1) / total_rounds * 100
             parts = []
-            if twitter_result:
-                parts.append(f"X:{twitter_result.total_actions}")
-            if reddit_result:
-                parts.append(f"R:{reddit_result.total_actions}")
+            if threads_result:
+                parts.append(f"X:{threads_result.total_actions}")
+            if facebook_result:
+                parts.append(f"R:{facebook_result.total_actions}")
             if polymarket_result:
                 parts.append(f"PM:{polymarket_result.total_actions}")
             log_info(
@@ -2836,7 +2855,7 @@ async def run_synchronized_simulation(
     log_info(f"Simulation complete! {elapsed:.0f}s total")
 
     # Save trajectories
-    for tracker, name in [(twitter_belief, "Twitter"), (reddit_belief, "Reddit"), (polymarket_belief, "Polymarket")]:
+    for tracker, name in [(threads_belief, "Threads"), (facebook_belief, "Facebook"), (polymarket_belief, "Polymarket")]:
         if tracker:
             traj_path = tracker.save_trajectory()
             log_info(f"[{name}] Trajectory saved: {traj_path}")
@@ -2848,8 +2867,8 @@ async def run_synchronized_simulation(
     # the runner log `total_actions=0` even on fully successful runs, masking
     # whether the agent loop did anything.
     for logger, name, result in [
-        (twitter_logger, "Twitter", twitter_result),
-        (reddit_logger, "Reddit", reddit_result),
+        (threads_logger, "Threads", threads_result),
+        (facebook_logger, "Facebook", facebook_result),
         (polymarket_logger, "Polymarket", polymarket_result),
     ]:
         if logger:
@@ -2857,7 +2876,7 @@ async def run_synchronized_simulation(
                 total_rounds, result.total_actions if result else 0
             )
 
-    return twitter_result, reddit_result, polymarket_result
+    return threads_result, facebook_result, polymarket_result
 
 
 async def main():
@@ -2869,14 +2888,14 @@ async def main():
         help='Configuration file path (simulation_config.json)'
     )
     parser.add_argument(
-        '--twitter-only',
+        '--threads-only',
         action='store_true',
-        help='Run Twitter simulation only'
+        help='Run Threads simulation only'
     )
     parser.add_argument(
-        '--reddit-only',
+        '--facebook-only',
         action='store_true',
-        help='Run Reddit simulation only'
+        help='Run Facebook simulation only'
     )
     parser.add_argument(
         '--polymarket-only',
@@ -2933,8 +2952,8 @@ async def main():
     
     # Create log manager
     log_manager = SimulationLogManager(simulation_dir)
-    twitter_logger = log_manager.get_twitter_logger()
-    reddit_logger = log_manager.get_reddit_logger()
+    threads_logger = log_manager.get_threads_logger()
+    facebook_logger = log_manager.get_facebook_logger()
     polymarket_logger = log_manager.get_polymarket_logger()
 
     log_manager.info("=" * 60)
@@ -2961,16 +2980,16 @@ async def main():
 
     log_manager.info("Log structure:")
     log_manager.info(f"  - Main log: simulation.log")
-    log_manager.info(f"  - Twitter actions: twitter/actions.jsonl")
-    log_manager.info(f"  - Reddit actions: reddit/actions.jsonl")
+    log_manager.info(f"  - Threads actions: twitter/actions.jsonl")
+    log_manager.info(f"  - Facebook actions: reddit/actions.jsonl")
     log_manager.info(f"  - Polymarket actions: polymarket/actions.jsonl")
     log_manager.info("=" * 60)
 
     start_time = datetime.now()
 
     # Store simulation results for all platforms
-    twitter_result: Optional[PlatformSimulation] = None
-    reddit_result: Optional[PlatformSimulation] = None
+    threads_result: Optional[PlatformSimulation] = None
+    facebook_result: Optional[PlatformSimulation] = None
     polymarket_result: Optional[PlatformSimulation] = None
 
     if args.env_only:
@@ -2978,37 +2997,39 @@ async def main():
         log_manager.info("ENV-ONLY mode: loading environments without running simulation...")
         model = create_model(config, use_boost=False)
 
-        # Twitter env
-        twitter_profile_path = os.path.join(simulation_dir, "twitter_profiles.csv")
-        if os.path.exists(twitter_profile_path):
-            twitter_result = PlatformSimulation()
-            twitter_result.agent_graph = await generate_twitter_agent_graph(
-                profile_path=twitter_profile_path, model=model, available_actions=TWITTER_ACTIONS,
+        # Threads env
+        threads_profile_path = os.path.join(simulation_dir, "threads_profiles.csv")
+        if os.path.exists(threads_profile_path):
+            threads_result = PlatformSimulation()
+            threads_result.agent_graph = await generate_threads_agent_graph(
+                profile_path=threads_profile_path, model=model, available_actions=THREADS_ACTIONS,
+                simulation=threads_simulation,
             )
-            db_path = os.path.join(simulation_dir, "twitter_simulation.db")
-            twitter_result.env = wonderwall.make(
-                agent_graph=twitter_result.agent_graph,
-                platform=wonderwall.DefaultPlatformType.TWITTER,
+            db_path = os.path.join(simulation_dir, "threads_simulation.db")
+            threads_result.env = wonderwall.make(
+                agent_graph=threads_result.agent_graph,
+                simulation=threads_simulation,
                 database_path=db_path, semaphore=60,
             )
-            await twitter_result.env.reset()
-            log_manager.info("[Twitter] Environment loaded")
+            await threads_result.env.reset()
+            log_manager.info("[Threads] Environment loaded")
 
-        # Reddit env
-        reddit_profile_path = os.path.join(simulation_dir, "reddit_profiles.json")
-        if os.path.exists(reddit_profile_path):
-            reddit_result = PlatformSimulation()
-            reddit_result.agent_graph = await generate_reddit_agent_graph(
-                profile_path=reddit_profile_path, model=model, available_actions=REDDIT_ACTIONS,
+        # Facebook env
+        facebook_profile_path = os.path.join(simulation_dir, "facebook_profiles.json")
+        if os.path.exists(facebook_profile_path):
+            facebook_result = PlatformSimulation()
+            facebook_result.agent_graph = await generate_facebook_agent_graph(
+                profile_path=facebook_profile_path, model=model, available_actions=FACEBOOK_ACTIONS,
+                simulation=facebook_simulation,
             )
-            db_path = os.path.join(simulation_dir, "reddit_simulation.db")
-            reddit_result.env = wonderwall.make(
-                agent_graph=reddit_result.agent_graph,
-                platform=wonderwall.DefaultPlatformType.REDDIT,
+            db_path = os.path.join(simulation_dir, "facebook_simulation.db")
+            facebook_result.env = wonderwall.make(
+                agent_graph=facebook_result.agent_graph,
+                simulation=facebook_simulation,
                 database_path=db_path, semaphore=60,
             )
-            await reddit_result.env.reset()
-            log_manager.info("[Reddit] Environment loaded")
+            await facebook_result.env.reset()
+            log_manager.info("[Facebook] Environment loaded")
 
         log_manager.info("Environments ready for interviews")
         wait_for_commands = True  # force waiting mode
@@ -3019,41 +3040,41 @@ async def main():
             log_manager.info("Cross-platform awareness ENABLED: agents will see their activity on other platforms")
 
         # Check which platforms have profile files
-        has_twitter = os.path.exists(os.path.join(simulation_dir, "twitter_profiles.csv"))
-        has_reddit = os.path.exists(os.path.join(simulation_dir, "reddit_profiles.json"))
+        has_threads = os.path.exists(os.path.join(simulation_dir, "threads_profiles.csv"))
+        has_facebook = os.path.exists(os.path.join(simulation_dir, "facebook_profiles.json"))
         has_polymarket = os.path.exists(os.path.join(simulation_dir, "polymarket_profiles.json"))
 
         # Create market-media bridge when both social media AND polymarket are running
-        has_social = has_twitter or has_reddit
+        has_social = has_threads or has_facebook
         bridge = MarketMediaBridge() if (has_social and has_polymarket) else None
         if bridge:
             log_manager.info("Market-Media Bridge ENABLED: social media agents see market prices, traders see social sentiment")
 
-        if args.twitter_only:
-            twitter_result = await run_twitter_simulation(config, simulation_dir, twitter_logger, log_manager, args.max_rounds, args.start_round, cross_platform_log=xp_log)
-        elif args.reddit_only:
-            reddit_result = await run_reddit_simulation(config, simulation_dir, reddit_logger, log_manager, args.max_rounds, args.start_round, cross_platform_log=xp_log)
+        if args.threads_only:
+            threads_result = await run_threads_simulation(config, simulation_dir, threads_logger, log_manager, args.max_rounds, args.start_round, cross_platform_log=xp_log)
+        elif args.facebook_only:
+            facebook_result = await run_facebook_simulation(config, simulation_dir, facebook_logger, log_manager, args.max_rounds, args.start_round, cross_platform_log=xp_log)
         elif args.polymarket_only:
             polymarket_result = await run_polymarket_simulation(config, simulation_dir, polymarket_logger, log_manager, args.max_rounds, args.start_round, cross_platform_log=xp_log)
         else:
             # Multiple platforms: use synchronized mode so they step together
             # This ensures the Market-Media Bridge data is never stale
-            platform_count = sum([has_twitter, has_reddit, has_polymarket])
-            platform_names = [p for p, h in [("Twitter", has_twitter), ("Reddit", has_reddit), ("Polymarket", has_polymarket)] if h]
+            platform_count = sum([has_threads, has_facebook, has_polymarket])
+            platform_names = [p for p, h in [("Threads", has_threads), ("Facebook", has_facebook), ("Polymarket", has_polymarket)] if h]
             log_manager.info(f"Launching {platform_count} platforms in SYNCHRONIZED mode: {', '.join(platform_names)}")
 
-            twitter_result, reddit_result, polymarket_result = await run_synchronized_simulation(
+            threads_result, facebook_result, polymarket_result = await run_synchronized_simulation(
                 config=config,
                 simulation_dir=simulation_dir,
-                twitter_logger=twitter_logger,
-                reddit_logger=reddit_logger,
+                threads_logger=threads_logger,
+                facebook_logger=facebook_logger,
                 polymarket_logger=polymarket_logger,
                 main_logger=log_manager,
                 max_rounds=args.max_rounds,
                 start_round=args.start_round,
                 cross_platform_log=xp_log,
-                has_twitter=has_twitter,
-                has_reddit=has_reddit,
+                has_threads=has_threads,
+                has_facebook=has_facebook,
                 has_polymarket=has_polymarket,
             )
 
@@ -3072,10 +3093,10 @@ async def main():
         # Create IPC handler
         ipc_handler = ParallelIPCHandler(
             simulation_dir=simulation_dir,
-            twitter_env=twitter_result.env if twitter_result else None,
-            twitter_agent_graph=twitter_result.agent_graph if twitter_result else None,
-            reddit_env=reddit_result.env if reddit_result else None,
-            reddit_agent_graph=reddit_result.agent_graph if reddit_result else None
+            threads_env=threads_result.env if threads_result else None,
+            threads_agent_graph=threads_result.agent_graph if threads_result else None,
+            facebook_env=facebook_result.env if facebook_result else None,
+            facebook_agent_graph=facebook_result.agent_graph if facebook_result else None
         )
         ipc_handler.update_status("alive")
         
@@ -3102,13 +3123,13 @@ async def main():
         ipc_handler.update_status("stopped")
     
     # Close environments
-    if twitter_result and twitter_result.env:
-        await twitter_result.env.close()
-        log_manager.info("[Twitter] Environment closed")
+    if threads_result and threads_result.env:
+        await threads_result.env.close()
+        log_manager.info("[Threads] Environment closed")
     
-    if reddit_result and reddit_result.env:
-        await reddit_result.env.close()
-        log_manager.info("[Reddit] Environment closed")
+    if facebook_result and facebook_result.env:
+        await facebook_result.env.close()
+        log_manager.info("[Facebook] Environment closed")
     
     log_manager.info("=" * 60)
     log_manager.info(f"All done!")

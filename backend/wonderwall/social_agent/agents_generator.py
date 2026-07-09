@@ -565,11 +565,12 @@ async def generate_custom_agents(
     return agent_graph
 
 
-async def generate_reddit_agent_graph(
+async def generate_facebook_agent_graph(
     profile_path: str,
     model: Optional[Union[BaseModelBackend, List[BaseModelBackend],
                           ModelManager]] = None,
     available_actions: list[ActionType] = None,
+    simulation=None,
 ) -> AgentGraph:
     agent_graph = AgentGraph()
     with open(profile_path, "r") as file:
@@ -602,6 +603,7 @@ async def generate_reddit_agent_graph(
             agent_graph=agent_graph,
             model=model,
             available_actions=available_actions,
+            simulation=simulation,
         )
 
         # Add agent to the agent graph
@@ -612,11 +614,12 @@ async def generate_reddit_agent_graph(
     return agent_graph
 
 
-async def generate_twitter_agent_graph(
+async def generate_threads_agent_graph(
     profile_path: str,
     model: Optional[Union[BaseModelBackend, List[BaseModelBackend],
                           ModelManager]] = None,
     available_actions: list[ActionType] = None,
+    simulation=None,
 ) -> AgentGraph:
     agent_info = pd.read_csv(profile_path)
 
@@ -644,6 +647,7 @@ async def generate_twitter_agent_graph(
             model=model,
             agent_graph=agent_graph,
             available_actions=available_actions,
+            simulation=simulation,
         )
 
         agent_graph.add_agent(agent)

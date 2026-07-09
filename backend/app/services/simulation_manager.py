@@ -1,6 +1,6 @@
 """
 Wonderwall Simulation Manager
-Manages parallel simulation across Twitter and Reddit platforms
+Manages parallel simulation across Threads and Facebook platforms
 Uses preset scripts + LLM-powered configuration parameter generation
 """
 
@@ -47,8 +47,8 @@ class SimulationStatus(str, Enum):
 
 
 # NOTE: Platform membership for a simulation is expressed on SimulationState
-# via the ``enable_twitter`` / ``enable_reddit`` / ``enable_polymarket`` flags
-# and via plain string fields (e.g. ``twitter_status``). The run scripts use
+# via the ``enable_threads`` / ``enable_facebook`` / ``enable_polymarket`` flags
+# and via plain string fields (e.g. ``threads_status``). The run scripts use
 # ``wonderwall.DefaultPlatformType`` when handing off to the Wonderwall framework.
 # There is intentionally no local ``PlatformType`` enum here — add one only
 # when MiroShark-side code actually needs it.
@@ -62,8 +62,8 @@ class SimulationState:
     graph_id: str
 
     # Platform enable status
-    enable_twitter: bool = True
-    enable_reddit: bool = True
+    enable_threads: bool = True
+    enable_facebook: bool = True
     enable_polymarket: bool = False
 
     # Number of prediction markets to generate when Polymarket is enabled.
@@ -84,8 +84,8 @@ class SimulationState:
 
     # Runtime data
     current_round: int = 0
-    twitter_status: str = "not_started"
-    reddit_status: str = "not_started"
+    threads_status: str = "not_started"
+    facebook_status: str = "not_started"
 
     # Timestamps
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -117,8 +117,8 @@ class SimulationState:
             "simulation_id": self.simulation_id,
             "project_id": self.project_id,
             "graph_id": self.graph_id,
-            "enable_twitter": self.enable_twitter,
-            "enable_reddit": self.enable_reddit,
+            "enable_threads": self.enable_threads,
+            "enable_facebook": self.enable_facebook,
             "enable_polymarket": self.enable_polymarket,
             "polymarket_market_count": self.polymarket_market_count,
             "status": self.status.value,
@@ -128,8 +128,8 @@ class SimulationState:
             "config_generated": self.config_generated,
             "config_reasoning": self.config_reasoning,
             "current_round": self.current_round,
-            "twitter_status": self.twitter_status,
-            "reddit_status": self.reddit_status,
+            "threads_status": self.threads_status,
+            "facebook_status": self.facebook_status,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "error": self.error,
@@ -216,8 +216,8 @@ class SimulationManager:
             simulation_id=simulation_id,
             project_id=data.get("project_id", ""),
             graph_id=data.get("graph_id", ""),
-            enable_twitter=data.get("enable_twitter", True),
-            enable_reddit=data.get("enable_reddit", True),
+            enable_threads=data.get("enable_threads", True),
+            enable_facebook=data.get("enable_facebook", True),
             enable_polymarket=data.get("enable_polymarket", False),
             polymarket_market_count=int(data.get("polymarket_market_count", 1) or 1),
             status=SimulationStatus(data.get("status", "created")),
@@ -227,8 +227,8 @@ class SimulationManager:
             config_generated=data.get("config_generated", False),
             config_reasoning=data.get("config_reasoning", ""),
             current_round=data.get("current_round", 0),
-            twitter_status=data.get("twitter_status", "not_started"),
-            reddit_status=data.get("reddit_status", "not_started"),
+            threads_status=data.get("threads_status", "not_started"),
+            facebook_status=data.get("facebook_status", "not_started"),
             created_at=data.get("created_at", datetime.now().isoformat()),
             updated_at=data.get("updated_at", datetime.now().isoformat()),
             error=data.get("error"),
@@ -246,8 +246,8 @@ class SimulationManager:
         self,
         project_id: str,
         graph_id: str,
-        enable_twitter: bool = True,
-        enable_reddit: bool = True,
+        enable_threads: bool = True,
+        enable_facebook: bool = True,
         enable_polymarket: bool = False,
         polymarket_market_count: int = 1,
         country: Optional[str] = None,
@@ -259,8 +259,8 @@ class SimulationManager:
         Args:
             project_id: Project ID
             graph_id: Graph ID
-            enable_twitter: Whether to enable Twitter simulation
-            enable_reddit: Whether to enable Reddit simulation
+            enable_threads: Whether to enable Threads simulation
+            enable_facebook: Whether to enable Facebook simulation
             enable_polymarket: Whether to enable Polymarket simulation
             country: Optional demographic country code (e.g. "sg", "us") —
                 when matching a pack under backend/app/countries/, the
@@ -280,8 +280,8 @@ class SimulationManager:
             simulation_id=simulation_id,
             project_id=project_id,
             graph_id=graph_id,
-            enable_twitter=enable_twitter,
-            enable_reddit=enable_reddit,
+            enable_threads=enable_threads,
+            enable_facebook=enable_facebook,
             enable_polymarket=enable_polymarket,
             polymarket_market_count=max(1, min(5, int(polymarket_market_count or 1))),
             status=SimulationStatus.CREATED,
@@ -408,15 +408,15 @@ class SimulationManager:
                         item_name=msg
                     )
             
-            # Set real-time save file path (prefer Reddit JSON format)
+            # Set real-time save file path (prefer Facebook JSON format)
             realtime_output_path = None
-            realtime_platform = "reddit"
-            if state.enable_reddit:
-                realtime_output_path = os.path.join(sim_dir, "reddit_profiles.json")
-                realtime_platform = "reddit"
-            elif state.enable_twitter:
-                realtime_output_path = os.path.join(sim_dir, "twitter_profiles.csv")
-                realtime_platform = "twitter"
+            realtime_platform = "facebook"
+            if state.enable_facebook:
+                realtime_output_path = os.path.join(sim_dir, "facebook_profiles.json")
+                realtime_platform = "facebook"
+            elif state.enable_threads:
+                realtime_output_path = os.path.join(sim_dir, "threads_profiles.csv")
+                realtime_platform = "threads"
             
             profiles = generator.generate_profiles_from_entities(
                 entities=filtered.entities,
@@ -429,9 +429,9 @@ class SimulationManager:
             )
             
             state.profiles_count = len(profiles)
-            
-            # Save Profile files (note: Twitter uses CSV format, Reddit uses JSON format)
-            # Reddit profiles were already saved in real-time during generation; save again here to ensure completeness
+
+            # Save Profile files (note: Threads uses CSV format, Facebook uses JSON format)
+            # Facebook profiles were already saved in real-time during generation; save again here to ensure completeness
             if progress_callback:
                 progress_callback(
                     "generating_profiles", 95,
@@ -439,20 +439,20 @@ class SimulationManager:
                     current=total_entities,
                     total=total_entities
                 )
-            
-            if state.enable_reddit:
+
+            if state.enable_facebook:
                 generator.save_profiles(
                     profiles=profiles,
-                    file_path=os.path.join(sim_dir, "reddit_profiles.json"),
-                    platform="reddit"
+                    file_path=os.path.join(sim_dir, "facebook_profiles.json"),
+                    platform="facebook"
                 )
-            
-            if state.enable_twitter:
-                # Twitter uses CSV format! This is an Wonderwall requirement
+
+            if state.enable_threads:
+                # Threads uses CSV format! This is an Wonderwall requirement
                 generator.save_profiles(
                     profiles=profiles,
-                    file_path=os.path.join(sim_dir, "twitter_profiles.csv"),
-                    platform="twitter"
+                    file_path=os.path.join(sim_dir, "threads_profiles.csv"),
+                    platform="threads"
                 )
 
             if state.enable_polymarket:
@@ -498,8 +498,8 @@ class SimulationManager:
                 simulation_requirement=simulation_requirement,
                 document_text=document_text,
                 entities=filtered.entities,
-                enable_twitter=state.enable_twitter,
-                enable_reddit=state.enable_reddit,
+                enable_threads=state.enable_threads,
+                enable_facebook=state.enable_facebook,
                 polymarket_market_count=state.polymarket_market_count,
             )
             
@@ -574,7 +574,7 @@ class SimulationManager:
         
         return simulations
     
-    def get_profiles(self, simulation_id: str, platform: str = "reddit") -> List[Dict[str, Any]]:
+    def get_profiles(self, simulation_id: str, platform: str = "facebook") -> List[Dict[str, Any]]:
         """Get simulation Agent Profiles"""
         state = self._load_simulation_state(simulation_id)
         if not state:
@@ -708,8 +708,8 @@ class SimulationManager:
 
         # Copy preparation files
         files_to_copy = [
-            "reddit_profiles.json",
-            "twitter_profiles.csv",
+            "facebook_profiles.json",
+            "threads_profiles.csv",
             "polymarket_profiles.json",
         ]
         for fname in files_to_copy:
@@ -750,8 +750,8 @@ class SimulationManager:
             simulation_id=new_id,
             project_id=parent.project_id,
             graph_id=parent.graph_id,
-            enable_twitter=parent.enable_twitter,
-            enable_reddit=parent.enable_reddit,
+            enable_threads=parent.enable_threads,
+            enable_facebook=parent.enable_facebook,
             enable_polymarket=parent.enable_polymarket,
             polymarket_market_count=parent.polymarket_market_count,
             status=SimulationStatus.READY,
@@ -784,15 +784,15 @@ class SimulationManager:
             "scripts_dir": scripts_dir,
             "config_file": config_path,
             "commands": {
-                "twitter": f"python {scripts_dir}/run_twitter_simulation.py --config {config_path}",
-                "reddit": f"python {scripts_dir}/run_reddit_simulation.py --config {config_path}",
+                "threads": f"python {scripts_dir}/run_threads_simulation.py --config {config_path}",
+                "facebook": f"python {scripts_dir}/run_facebook_simulation.py --config {config_path}",
                 "parallel": f"python {scripts_dir}/run_parallel_simulation.py --config {config_path}",
             },
             "instructions": (
                 f"1. Activate conda environment: conda activate MiroShark\n"
                 f"2. Run simulation (scripts located at {scripts_dir}):\n"
-                f"   - Run Twitter only: python {scripts_dir}/run_twitter_simulation.py --config {config_path}\n"
-                f"   - Run Reddit only: python {scripts_dir}/run_reddit_simulation.py --config {config_path}\n"
+                f"   - Run Threads only: python {scripts_dir}/run_threads_simulation.py --config {config_path}\n"
+                f"   - Run Facebook only: python {scripts_dir}/run_facebook_simulation.py --config {config_path}\n"
                 f"   - Run both platforms in parallel: python {scripts_dir}/run_parallel_simulation.py --config {config_path}"
             )
         }

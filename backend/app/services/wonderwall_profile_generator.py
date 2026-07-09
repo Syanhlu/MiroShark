@@ -37,10 +37,10 @@ class WonderwallAgentProfile:
     bio: str
     persona: str
     
-    # Optional fields - Reddit style
+    # Optional fields - Facebook style
     karma: int = 1000
-    
-    # Optional fields - Twitter style
+
+    # Optional fields - Threads style
     friend_count: int = 100
     follower_count: int = 150
     statuses_count: int = 500
@@ -70,8 +70,8 @@ class WonderwallAgentProfile:
 
     created_at: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d"))
     
-    def to_reddit_format(self) -> Dict[str, Any]:
-        """Convert to Reddit platform format"""
+    def to_facebook_format(self) -> Dict[str, Any]:
+        """Convert to Facebook platform format"""
         profile = {
             "user_id": self.user_id,
             "username": self.user_name,  # Wonderwall library requires field name as username (no underscore)
@@ -98,8 +98,8 @@ class WonderwallAgentProfile:
 
         return profile
 
-    def to_twitter_format(self) -> Dict[str, Any]:
-        """Convert to Twitter platform format"""
+    def to_threads_format(self) -> Dict[str, Any]:
+        """Convert to Threads platform format"""
         profile = {
             "user_id": self.user_id,
             "username": self.user_name,  # Wonderwall library requires field name as username (no underscore)
@@ -813,7 +813,7 @@ CONTEXT (from knowledge graph and research):
 
 Return JSON with these fields:
 
-"bio": A punchy social media bio (2-3 sentences). Not a resume — a vibe. What would this person actually write in their Twitter/Reddit bio? Include their attitude, not just their job title.
+"bio": A punchy social media bio (2-3 sentences). Not a resume — a vibe. What would this person actually write in their Threads/Facebook bio? Include their attitude, not just their job title.
 
 "persona": A rich character description (800-1200 words). Write this as a character brief for an actor, not a Wikipedia entry. Cover:
 - WHO THEY ARE: Background, career, education. But focus on what shaped their worldview, not just facts.
@@ -879,7 +879,7 @@ CONTEXT (from knowledge graph and research):
 
 Return JSON with these fields:
 
-"bio": The official account bio (2-3 sentences). Professional but not boring. Think real organizational Twitter bios — they have personality within institutional constraints.
+"bio": The official account bio (2-3 sentences). Professional but not boring. Think real organizational Threads bios — they have personality within institutional constraints.
 
 "persona": A communications playbook for this account (600-900 words). This is a guide for how the account behaves online:
 - INSTITUTIONAL IDENTITY: What is this organization, and what is its public mission? What image does it project?
@@ -1034,7 +1034,7 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
         graph_id: Optional[str] = None,
         parallel_count: int = 15,
         realtime_output_path: Optional[str] = None,
-        output_platform: str = "reddit"
+        output_platform: str = "facebook"
     ) -> List[WonderwallAgentProfile]:
         """
         Batch generate Agent Profiles from entities (supports parallel generation)
@@ -1046,7 +1046,7 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
             graph_id: Knowledge graph ID for knowledge graph search to get richer context
             parallel_count: Number of parallel generations, default 5
             realtime_output_path: File path for real-time writing (if provided, writes after each generation)
-            output_platform: Output platform format ("reddit" or "twitter")
+            output_platform: Output platform format ("facebook" or "threads")
 
         Returns:
             List of Agent Profiles
@@ -1108,15 +1108,15 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
                     return
 
                 try:
-                    if output_platform == "reddit":
-                        # Reddit JSON format
-                        profiles_data = [p.to_reddit_format() for p in existing_profiles]
+                    if output_platform == "facebook":
+                        # Facebook JSON format
+                        profiles_data = [p.to_facebook_format() for p in existing_profiles]
                         with open(realtime_output_path, 'w', encoding='utf-8') as f:
                             json.dump(profiles_data, f, ensure_ascii=False, indent=2)
                     else:
-                        # Twitter CSV format
+                        # Threads CSV format
                         import csv
-                        profiles_data = [p.to_twitter_format() for p in existing_profiles]
+                        profiles_data = [p.to_threads_format() for p in existing_profiles]
                         if profiles_data:
                             fieldnames = list(profiles_data[0].keys())
                             with open(realtime_output_path, 'w', encoding='utf-8', newline='') as f:
@@ -1265,32 +1265,32 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
         self,
         profiles: List[WonderwallAgentProfile],
         file_path: str,
-        platform: str = "reddit"
+        platform: str = "facebook"
     ):
         """
         Save profiles to file (choose correct format based on platform)
 
         Wonderwall platform format requirements:
-        - Twitter: CSV format
-        - Reddit: JSON format
+        - Threads: CSV format
+        - Facebook: JSON format
 
         Args:
             profiles: List of profiles
             file_path: File path
-            platform: Platform type ("reddit" or "twitter")
+            platform: Platform type ("facebook" or "threads")
         """
-        if platform == "twitter":
-            self._save_twitter_csv(profiles, file_path)
+        if platform == "threads":
+            self._save_threads_csv(profiles, file_path)
         elif platform == "polymarket":
             self._save_polymarket_json(profiles, file_path)
         else:
-            self._save_reddit_json(profiles, file_path)
-    
-    def _save_twitter_csv(self, profiles: List[WonderwallAgentProfile], file_path: str):
-        """
-        Save Twitter Profile as CSV format (compliant with Wonderwall official requirements)
+            self._save_facebook_json(profiles, file_path)
 
-        Wonderwall Twitter required CSV fields:
+    def _save_threads_csv(self, profiles: List[WonderwallAgentProfile], file_path: str):
+        """
+        Save Threads Profile as CSV format (compliant with Wonderwall official requirements)
+
+        Wonderwall Threads required CSV fields:
         - user_id: User ID (sequential from 0 based on CSV order)
         - name: User's real name
         - username: System username
@@ -1335,7 +1335,7 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
                 ]
                 writer.writerow(row)
         
-        logger.info(f"Saved {len(profiles)} Twitter Profiles to {file_path} (Wonderwall CSV format)")
+        logger.info(f"Saved {len(profiles)} Threads Profiles to {file_path} (Wonderwall CSV format)")
     
     def _normalize_gender(self, gender: Optional[str]) -> str:
         """
@@ -1357,11 +1357,11 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
         
         return gender_map.get(gender_lower, "other")
     
-    def _save_reddit_json(self, profiles: List[WonderwallAgentProfile], file_path: str):
+    def _save_facebook_json(self, profiles: List[WonderwallAgentProfile], file_path: str):
         """
-        Save Reddit Profile as JSON format
+        Save Facebook Profile as JSON format
 
-        Uses the same format as to_reddit_format(), ensuring Wonderwall can read correctly.
+        Uses the same format as to_facebook_format(), ensuring Wonderwall can read correctly.
         Must include user_id field, which is key for Wonderwall agent_graph.get_agent() matching!
 
         Required fields:
@@ -1377,7 +1377,7 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
         """
         data = []
         for idx, profile in enumerate(profiles):
-            # Use the same format as to_reddit_format()
+            # Use the same format as to_facebook_format()
             item = {
                 "user_id": profile.user_id if profile.user_id is not None else idx,  # Critical: must include user_id
                 "username": profile.user_name,
@@ -1404,7 +1404,7 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         
-        logger.info(f"Saved {len(profiles)} Reddit Profiles to {file_path} (JSON format, includes user_id field)")
+        logger.info(f"Saved {len(profiles)} Facebook Profiles to {file_path} (JSON format, includes user_id field)")
 
     def _save_polymarket_json(self, profiles: List[WonderwallAgentProfile], file_path: str):
         """

@@ -16,7 +16,7 @@ import contextvars
 from typing import Any, Mapping, Optional
 
 
-SUPPORTED = ("en", "zh-CN", "de", "fr")
+SUPPORTED = ("en", "zh-CN", "de", "fr", "vi")
 DEFAULT = "en"
 
 # Active locale for the current execution context. Set at the API entry
@@ -46,6 +46,8 @@ def normalize_locale(raw: Optional[str]) -> str:
         return "de"
     if head_lc.startswith("fr"):
         return "fr"
+    if head_lc.startswith("vi"):
+        return "vi"
     return DEFAULT
 
 
@@ -120,19 +122,20 @@ class use_locale:
             self._token = None
 
 
-def t(en: str, zh: str = "", locale: str = DEFAULT, *, de: str = "", fr: str = "") -> str:
+def t(en: str, zh: str = "", locale: str = DEFAULT, *, de: str = "", fr: str = "", vi: str = "") -> str:
     """Pick a translation for ``locale``, falling back to the English source.
 
     ``en`` is the canonical source string. ``zh`` (kept positional for the
-    existing two-language call sites) / ``de`` / ``fr`` are optional per-locale
-    overrides; an empty or omitted override falls back to English — so a call
-    site that hasn't been translated yet stays English under any locale.
+    existing two-language call sites) / ``de`` / ``fr`` / ``vi`` are optional
+    per-locale overrides; an empty or omitted override falls back to English —
+    so a call site that hasn't been translated yet stays English under any
+    locale.
 
     Adding a language: add a keyword here keyed to its BCP-47 code below,
     append the code to :data:`SUPPORTED`, add a branch in
     :func:`normalize_locale`, and create ``app/prompts/locales/<locale>/``.
     """
-    overrides = {"zh-CN": zh, "de": de, "fr": fr}
+    overrides = {"zh-CN": zh, "de": de, "fr": fr, "vi": vi}
     return overrides.get(locale) or en
 
 
@@ -162,6 +165,10 @@ def lang_block(locale: str, fields: list) -> str:
             f"{_join(fields, ', ', 'et')} uniquement en français."
         ),
         "zh-CN": f"重要：请用中文编写 {_join(fields, '、', '和')} 字段。",
+        "vi": (
+            f"QUAN TRỌNG: Viết {'các trường' if plural else 'trường'} "
+            f"{_join(fields, ', ', 'và')} hoàn toàn bằng tiếng Việt."
+        ),
     }
     instruction = instructions.get(locale, "")
     return f"{instruction}\n\n" if instruction else ""

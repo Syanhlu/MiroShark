@@ -109,8 +109,8 @@ def basic_state():
         "simulation_id": "sim_abcdef123456",
         "project_id": "proj_xyz",
         "graph_id": "miroshark_xyz",
-        "enable_twitter": True,
-        "enable_reddit": True,
+        "enable_threads": True,
+        "enable_facebook": True,
         "enable_polymarket": False,
         "polymarket_market_count": 1,
         "status": "completed",
@@ -120,8 +120,8 @@ def basic_state():
         "config_generated": True,
         "config_reasoning": "LLM picked 36 agents to balance cost vs coverage.",
         "current_round": 24,
-        "twitter_status": "completed",
-        "reddit_status": "completed",
+        "threads_status": "completed",
+        "facebook_status": "completed",
         "created_at": "2026-05-08T12:00:00",
         "updated_at": "2026-05-08T13:00:00",
         "error": None,
@@ -173,8 +173,8 @@ def test_build_repro_config_full_round_trip(basic_state, basic_config, tmp_path)
 
     # Platforms.
     assert blob["platforms"] == {
-        "twitter": True,
-        "reddit": True,
+        "threads": True,
+        "facebook": True,
         "polymarket": False,
         "polymarket_market_count": 1,
     }
@@ -225,8 +225,8 @@ def test_platforms_default_to_safe_values(tmp_path):
     """Empty state dict still produces a complete platforms block."""
     blob = repro_export.build_repro_config({}, None, str(tmp_path))
     assert blob["platforms"] == {
-        "twitter": True,
-        "reddit": True,
+        "threads": True,
+        "facebook": True,
         "polymarket": False,
         "polymarket_market_count": 1,
     }

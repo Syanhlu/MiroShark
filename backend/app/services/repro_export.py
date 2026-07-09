@@ -44,8 +44,8 @@ Schema (v1)::
       "agent_count": 36,
       "total_rounds": 24,
       "platforms": {
-        "twitter": true,
-        "reddit": true,
+        "threads": true,
+        "facebook": true,
         "polymarket": false,
         "polymarket_market_count": 1
       },
@@ -132,8 +132,8 @@ def _safe_str(value: Any, default: str = "") -> str:
 def _build_platforms(state_dict: Dict[str, Any]) -> Dict[str, Any]:
     """Pull the platform-toggle subset out of a state dict."""
     return {
-        "twitter": bool(state_dict.get("enable_twitter", True)),
-        "reddit": bool(state_dict.get("enable_reddit", True)),
+        "threads": bool(state_dict.get("enable_threads", True)),
+        "facebook": bool(state_dict.get("enable_facebook", True)),
         "polymarket": bool(state_dict.get("enable_polymarket", False)),
         "polymarket_market_count": _safe_int(
             state_dict.get("polymarket_market_count", 1) or 1, default=1
@@ -454,7 +454,7 @@ def validate_blob(blob: Any) -> List[str]:
     if not isinstance(platforms, dict):
         errors.append("platforms must be an object")
     else:
-        for plat_key in ("twitter", "reddit", "polymarket"):
+        for plat_key in ("threads", "facebook", "polymarket"):
             if plat_key in platforms and not isinstance(
                 platforms[plat_key], bool
             ):

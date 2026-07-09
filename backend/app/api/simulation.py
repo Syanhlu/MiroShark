@@ -617,7 +617,7 @@ _ASK_SYSTEM_PROMPT = (
     "is, the better the simulation behaves.\n\n"
     "Return JSON of this exact shape:\n"
     '{ "title": str, "simulation_requirement": str, "seed_document": str, '
-    '"key_actors": [str], "suggested_platforms": ["twitter"|"reddit"|"polymarket"] }\n\n'
+    '"key_actors": [str], "suggested_platforms": ["threads"|"facebook"|"polymarket"] }\n\n'
     "Rules:\n"
     "- title: short (<=60 chars), descriptive — this is the project name.\n"
     "- simulation_requirement: one paragraph (~400-600 chars) framing the "
@@ -661,7 +661,7 @@ def _ask_cache_put(key: str, value: dict) -> None:
     _lru_put(_ASK_CACHE, _ASK_CACHE_ORDER, key, value, max_size=_ASK_CACHE_MAX)
 
 
-_ASK_ALLOWED_PLATFORMS = {"twitter", "reddit", "polymarket"}
+_ASK_ALLOWED_PLATFORMS = {"threads", "facebook", "polymarket"}
 
 
 def _ask_clean_result(payload, question: str) -> "dict | None":
@@ -695,7 +695,7 @@ def _ask_clean_result(payload, question: str) -> "dict | None":
     seen = set()
     platforms = [p for p in platforms if not (p in seen or seen.add(p))]
     if not platforms:
-        platforms = ["twitter", "reddit"]
+        platforms = ["threads", "facebook"]
 
     return {
         "title": title[:120],
@@ -1388,8 +1388,8 @@ def create_simulation():
         {
             "project_id": "proj_xxxx",      // Required
             "graph_id": "miroshark_xxxx",    // Optional, fetched from project if not provided
-            "enable_twitter": true,          // Optional, default true
-            "enable_reddit": true,           // Optional, default true
+            "enable_threads": true,          // Optional, default true
+            "enable_facebook": true,           // Optional, default true
             "enable_polymarket": false,      // Optional, default false
             "country": "sg",                 // Optional, demographic country pack code
             "demographic_filters": {         // Optional, narrows the Nemotron sample
@@ -1408,8 +1408,8 @@ def create_simulation():
                 "project_id": "proj_xxxx",
                 "graph_id": "miroshark_xxxx",
                 "status": "created",
-                "enable_twitter": true,
-                "enable_reddit": true,
+                "enable_threads": true,
+                "enable_facebook": true,
                 "created_at": "2025-12-01T10:00:00"
             }
         }
@@ -1453,8 +1453,8 @@ def create_simulation():
         state = manager.create_simulation(
             project_id=project_id,
             graph_id=graph_id,
-            enable_twitter=data.get('enable_twitter', True),
-            enable_reddit=data.get('enable_reddit', True),
+            enable_threads=data.get('enable_threads', True),
+            enable_facebook=data.get('enable_facebook', True),
             enable_polymarket=data.get('enable_polymarket', False),
             polymarket_market_count=data.get('polymarket_market_count', 1),
             country=data.get('country'),
@@ -1629,7 +1629,7 @@ def _check_simulation_prepared(simulation_id: str) -> tuple:
 
     Conditions checked:
     1. state.json exists and status is "ready"
-    2. Required files exist: reddit_profiles.json, twitter_profiles.csv, simulation_config.json
+    2. Required files exist: facebook_profiles.json, threads_profiles.csv, simulation_config.json
 
     Note: Run scripts (run_*.py) remain in backend/scripts/ directory and are no longer copied to simulation directory
 
@@ -1652,8 +1652,8 @@ def _check_simulation_prepared(simulation_id: str) -> tuple:
     required_files = [
         "state.json",
         "simulation_config.json",
-        "reddit_profiles.json",
-        "twitter_profiles.csv"
+        "facebook_profiles.json",
+        "threads_profiles.csv"
     ]
     
     # Check if files exist
@@ -1697,7 +1697,7 @@ def _check_simulation_prepared(simulation_id: str) -> tuple:
         prepared_statuses = ["ready", "preparing", "running", "completed", "stopped", "failed", "paused"]
         if status in prepared_statuses and config_generated:
             # Get file statistics
-            profiles_file = os.path.join(simulation_dir, "reddit_profiles.json")
+            profiles_file = os.path.join(simulation_dir, "facebook_profiles.json")
 
             profiles_count = 0
             if os.path.exists(profiles_file):
@@ -2426,10 +2426,10 @@ def get_simulation_profiles(simulation_id: str):
     Get simulation Agent Profiles
 
     Query parameters:
-        platform: Platform type (reddit/twitter, default reddit)
+        platform: Platform type (facebook/threads, default facebook)
     """
     try:
-        platform = request.args.get('platform', 'reddit')
+        platform = request.args.get('platform', 'facebook')
         
         manager = SimulationManager()
         profiles = manager.get_profiles(simulation_id, platform=platform)
@@ -2469,14 +2469,14 @@ def get_simulation_profiles_realtime(simulation_id: str):
     - Returns additional metadata (e.g., file modification time, whether generation is in progress)
 
     Query parameters:
-        platform: Platform type (reddit/twitter, default reddit)
+        platform: Platform type (facebook/threads, default facebook)
 
     Returns:
         {
             "success": true,
             "data": {
                 "simulation_id": "sim_xxxx",
-                "platform": "reddit",
+                "platform": "facebook",
                 "count": 15,
                 "total_expected": 93,  // Expected total (if available)
                 "is_generating": true,  // Whether generation is in progress
@@ -2492,7 +2492,7 @@ def get_simulation_profiles_realtime(simulation_id: str):
 
     locale = get_locale(request)
     try:
-        platform = request.args.get('platform', 'reddit')
+        platform = request.args.get('platform', 'facebook')
 
         # Get simulation directory
         sim_dir = os.path.join(Config.WONDERWALL_SIMULATION_DATA_DIR, simulation_id)
@@ -2504,10 +2504,10 @@ def get_simulation_profiles_realtime(simulation_id: str):
             }), 404
 
         # Determine file path
-        if platform == "reddit":
-            profiles_file = os.path.join(sim_dir, "reddit_profiles.json")
+        if platform == "facebook":
+            profiles_file = os.path.join(sim_dir, "facebook_profiles.json")
         else:
-            profiles_file = os.path.join(sim_dir, "twitter_profiles.csv")
+            profiles_file = os.path.join(sim_dir, "threads_profiles.csv")
 
         # Check if file exists
         file_exists = os.path.exists(profiles_file)
@@ -2520,7 +2520,7 @@ def get_simulation_profiles_realtime(simulation_id: str):
             file_modified_at = datetime.fromtimestamp(file_stat.st_mtime).isoformat()
             
             try:
-                if platform == "reddit":
+                if platform == "facebook":
                     with open(profiles_file, 'r', encoding='utf-8') as f:
                         profiles = json.load(f)
                 else:
@@ -2678,8 +2678,8 @@ def get_simulation_config_realtime(simulation_id: str):
                 "simulation_hours": config.get("time_config", {}).get("total_simulation_hours"),
                 "initial_posts_count": len(config.get("event_config", {}).get("initial_posts", [])),
                 "hot_topics_count": len(config.get("event_config", {}).get("hot_topics", [])),
-                "has_twitter_config": "twitter_config" in config,
-                "has_reddit_config": "reddit_config" in config,
+                "has_threads_config": "threads_config" in config,
+                "has_facebook_config": "facebook_config" in config,
                 "generated_at": config.get("generated_at"),
                 "llm_model": config.get("llm_model")
             }
@@ -2728,8 +2728,8 @@ def retry_simulation_config(simulation_id: str):
         # Profiles must exist before we can retry config generation
         sim_dir = os.path.join(Config.WONDERWALL_SIMULATION_DATA_DIR, simulation_id)
         profiles_exist = (
-            os.path.exists(os.path.join(sim_dir, "reddit_profiles.json")) or
-            os.path.exists(os.path.join(sim_dir, "twitter_profiles.csv"))
+            os.path.exists(os.path.join(sim_dir, "facebook_profiles.json")) or
+            os.path.exists(os.path.join(sim_dir, "threads_profiles.csv"))
         )
         if not profiles_exist:
             return jsonify({
@@ -2800,8 +2800,8 @@ def retry_simulation_config(simulation_id: str):
                     simulation_requirement=simulation_requirement,
                     document_text=document_text,
                     entities=filtered.entities,
-                    enable_twitter=state.enable_twitter,
-                    enable_reddit=state.enable_reddit,
+                    enable_threads=state.enable_threads,
+                    enable_facebook=state.enable_facebook,
                     polymarket_market_count=state.polymarket_market_count,
                 )
 
@@ -2971,8 +2971,8 @@ def download_simulation_script(script_name: str):
     Download simulation run script file (common scripts, located at backend/scripts/)
 
     Options for script_name:
-        - run_twitter_simulation.py
-        - run_reddit_simulation.py
+        - run_threads_simulation.py
+        - run_facebook_simulation.py
         - run_parallel_simulation.py
         - action_logger.py
     """
@@ -2983,8 +2983,8 @@ def download_simulation_script(script_name: str):
 
         # Validate script name
         allowed_scripts = [
-            "run_twitter_simulation.py",
-            "run_reddit_simulation.py",
+            "run_threads_simulation.py",
+            "run_facebook_simulation.py",
             "run_parallel_simulation.py",
             "action_logger.py"
         ]
@@ -3038,7 +3038,7 @@ def generate_profiles():
             "graph_id": "miroshark_xxxx",     // Required
             "entity_types": ["Student"],      // Optional
             "use_llm": true,                  // Optional
-            "platform": "reddit"              // Optional
+            "platform": "facebook"              // Optional
         }
     """
     locale = get_locale(request)
@@ -3054,7 +3054,7 @@ def generate_profiles():
 
         entity_types = data.get('entity_types')
         use_llm = data.get('use_llm', True)
-        platform = data.get('platform', 'reddit')
+        platform = data.get('platform', 'facebook')
 
         storage = current_app.extensions.get('neo4j_storage')
         if not storage:
@@ -3091,10 +3091,10 @@ def generate_profiles():
             use_llm=use_llm
         )
         
-        if platform == "reddit":
-            profiles_data = [p.to_reddit_format() for p in profiles]
-        elif platform == "twitter":
-            profiles_data = [p.to_twitter_format() for p in profiles]
+        if platform == "facebook":
+            profiles_data = [p.to_facebook_format() for p in profiles]
+        elif platform == "threads":
+            profiles_data = [p.to_threads_format() for p in profiles]
         else:
             profiles_data = [p.to_dict() for p in profiles]
         
@@ -3127,7 +3127,7 @@ def start_simulation():
     Request (JSON):
         {
             "simulation_id": "sim_xxxx",          // Required, simulation ID
-            "platform": "parallel",                // Optional: twitter / reddit / parallel (default)
+            "platform": "parallel",                // Optional: threads / facebook / parallel (default)
             "max_rounds": 100,                     // Optional: maximum simulation rounds, used to truncate overly long simulations
             "enable_graph_memory_update": false,   // Optional: whether to dynamically update agent activity to knowledge graph memory
             "force": false                         // Optional: force restart (will stop running simulation and clean up logs)
@@ -3152,8 +3152,8 @@ def start_simulation():
                 "simulation_id": "sim_xxxx",
                 "runner_status": "running",
                 "process_pid": 12345,
-                "twitter_running": true,
-                "reddit_running": true,
+                "threads_running": true,
+                "facebook_running": true,
                 "started_at": "2025-12-01T10:00:00",
                 "graph_memory_update_enabled": true,  // Whether graph memory update is enabled
                 "force_restarted": true               // Whether it was a forced restart
@@ -3205,12 +3205,12 @@ def start_simulation():
                     )
                 }), 400
 
-        if platform not in ['twitter', 'reddit', 'polymarket', 'parallel']:
+        if platform not in ['threads', 'facebook', 'polymarket', 'parallel']:
             return jsonify({
                 "success": False,
                 "error": _t(
-                    f"Invalid platform type: {platform}, options: twitter/reddit/polymarket/parallel",
-                    f"无效的平台类型:{platform},可选项:twitter/reddit/polymarket/parallel",
+                    f"Invalid platform type: {platform}, options: threads/facebook/polymarket/parallel",
+                    f"无效的平台类型:{platform},可选项:threads/facebook/polymarket/parallel",
                     locale,
                 )
             }), 400
@@ -3431,10 +3431,10 @@ def get_run_status(simulation_id: str):
                 "progress_percent": 3.5,
                 "simulated_hours": 2,
                 "total_simulation_hours": 72,
-                "twitter_running": true,
-                "reddit_running": true,
-                "twitter_actions_count": 150,
-                "reddit_actions_count": 200,
+                "threads_running": true,
+                "facebook_running": true,
+                "threads_actions_count": 150,
+                "facebook_actions_count": 200,
                 "total_actions_count": 350,
                 "started_at": "2025-12-01T10:00:00",
                 "updated_at": "2025-12-01T10:30:00"
@@ -3453,8 +3453,8 @@ def get_run_status(simulation_id: str):
                     "current_round": 0,
                     "total_rounds": 0,
                     "progress_percent": 0,
-                    "twitter_actions_count": 0,
-                    "reddit_actions_count": 0,
+                    "threads_actions_count": 0,
+                    "facebook_actions_count": 0,
                     "total_actions_count": 0,
                 }
             })
@@ -3481,7 +3481,7 @@ def get_run_status_detail(simulation_id: str):
     For frontend real-time display
 
     Query parameters:
-        platform: Filter platform (twitter/reddit, optional)
+        platform: Filter platform (threads/facebook, optional)
 
     Returns:
         {
@@ -3495,7 +3495,7 @@ def get_run_status_detail(simulation_id: str):
                     {
                         "round_num": 5,
                         "timestamp": "2025-12-01T10:30:00",
-                        "platform": "twitter",
+                        "platform": "threads",
                         "agent_id": 3,
                         "agent_name": "Agent Name",
                         "action_type": "CREATE_POST",
@@ -3505,8 +3505,8 @@ def get_run_status_detail(simulation_id: str):
                     },
                     ...
                 ],
-                "twitter_actions": [...],  # All actions on Twitter platform
-                "reddit_actions": [...]    # All actions on Reddit platform
+                "threads_actions": [...],  # All actions on Threads platform
+                "facebook_actions": [...]    # All actions on Facebook platform
             }
         }
     """
@@ -3521,8 +3521,8 @@ def get_run_status_detail(simulation_id: str):
                     "simulation_id": simulation_id,
                     "runner_status": "idle",
                     "all_actions": [],
-                    "twitter_actions": [],
-                    "reddit_actions": []
+                    "threads_actions": [],
+                    "facebook_actions": []
                 }
             })
         
@@ -3533,15 +3533,15 @@ def get_run_status_detail(simulation_id: str):
         )
         
         # Get actions by platform
-        twitter_actions = SimulationRunner.get_all_actions(
+        threads_actions = SimulationRunner.get_all_actions(
             simulation_id=simulation_id,
-            platform="twitter"
-        ) if not platform_filter or platform_filter == "twitter" else []
+            platform="threads"
+        ) if not platform_filter or platform_filter == "threads" else []
         
-        reddit_actions = SimulationRunner.get_all_actions(
+        facebook_actions = SimulationRunner.get_all_actions(
             simulation_id=simulation_id,
-            platform="reddit"
-        ) if not platform_filter or platform_filter == "reddit" else []
+            platform="facebook"
+        ) if not platform_filter or platform_filter == "facebook" else []
         
         # Get current round actions (recent_actions only shows latest round)
         current_round = run_state.current_round
@@ -3554,8 +3554,8 @@ def get_run_status_detail(simulation_id: str):
         # Get basic status information
         result = run_state.to_dict()
         result["all_actions"] = [a.to_dict() for a in all_actions]
-        result["twitter_actions"] = [a.to_dict() for a in twitter_actions]
-        result["reddit_actions"] = [a.to_dict() for a in reddit_actions]
+        result["threads_actions"] = [a.to_dict() for a in threads_actions]
+        result["facebook_actions"] = [a.to_dict() for a in facebook_actions]
         result["rounds_count"] = len(run_state.rounds)
         # recent_actions only shows current latest round content for both platforms
         result["recent_actions"] = [a.to_dict() for a in recent_actions]
@@ -3582,7 +3582,7 @@ def get_simulation_actions(simulation_id: str):
     Query parameters:
         limit: Return count (default 100)
         offset: Offset (default 0)
-        platform: Filter platform (twitter/reddit)
+        platform: Filter platform (threads/facebook)
         agent_id: Filter Agent ID
         round_num: Filter round
 
@@ -3702,7 +3702,7 @@ def _compute_influence_ranked(simulation_id, top_n=None):
     """
     Compute agent influence scores from simulation action JSONL logs.
 
-    Reads twitter/actions.jsonl, reddit/actions.jsonl, and polymarket/actions.jsonl,
+    Reads threads/actions.jsonl, facebook/actions.jsonl, and polymarket/actions.jsonl,
     then ranks agents by a composite influence score:
 
         score = engagement_received * 3 + follows_received * 2
@@ -3733,7 +3733,7 @@ def _compute_influence_ranked(simulation_id, top_n=None):
             }
         return agents[name]
 
-    for platform in ('twitter', 'reddit', 'polymarket'):
+    for platform in ('threads', 'facebook', 'polymarket'):
         actions_path = os.path.join(sim_dir, platform, 'actions.jsonl')
         if not os.path.exists(actions_path):
             continue
@@ -4444,7 +4444,7 @@ def get_simulation_frame(simulation_id: str, round_num: int):
     Query params:
         include_belief: "true" (default) — inlines belief positions at/before round
         include_market: "true" (default) — inlines YES price per market at round
-        platforms: comma-list (twitter,reddit,polymarket) — filter returned actions
+        platforms: comma-list (threads,facebook,polymarket) — filter returned actions
 
     Response: ``{actions, market_prices, belief, active_agents, action_counts}``.
     """
@@ -4460,7 +4460,7 @@ def get_simulation_frame(simulation_id: str, round_num: int):
         actions_for_round: list = []
         if platforms:
             for p in platforms:
-                if p not in ('twitter', 'reddit', 'polymarket'):
+                if p not in ('threads', 'facebook', 'polymarket'):
                     continue
                 actions_for_round.extend(
                     SimulationRunner.get_all_actions(simulation_id, platform=p, round_num=round_num)
@@ -4469,7 +4469,7 @@ def get_simulation_frame(simulation_id: str, round_num: int):
             actions_for_round = SimulationRunner.get_all_actions(simulation_id, round_num=round_num)
 
         actions_for_round.sort(key=lambda a: getattr(a, 'timestamp', '') or '')
-        action_counts = {"twitter": 0, "reddit": 0, "polymarket": 0}
+        action_counts = {"threads": 0, "facebook": 0, "polymarket": 0}
         active_agents = set()
         for a in actions_for_round:
             plat = getattr(a, 'platform', None)
@@ -6244,7 +6244,7 @@ def get_agent_sparklines(simulation_id: str):
     ``_avg_position`` mean of per-topic ``belief_positions`` every other
     surface averages, and the final stance uses the same ±0.2 threshold,
     so an agent tagged "bullish" here is "bullish" in the transcript.
-    Agent names come from ``reddit_profiles.json``.
+    Agent names come from ``facebook_profiles.json``.
 
     Same publish gate as every other share surface (``is_public=true``).
     Returns ``404`` when no agent holds a usable belief position yet so a
@@ -6944,7 +6944,7 @@ def get_reproduce_config(simulation_id: str):
     The blob is a v1-schema JSON document containing every parameter a
     second operator would need to re-run the same simulation:
     ``scenario`` text, ``agent_count``, ``total_rounds``, platform
-    toggles (twitter / reddit / polymarket + market count), the four
+    toggles (threads / facebook / polymarket + market count), the four
     cadence knobs from ``time_config`` (minutes per round, total hours,
     peak / off-peak windows), any operator-injected ``director_events``,
     and the ``lineage`` block describing whether this sim is original,
@@ -8370,14 +8370,14 @@ def get_simulation_posts(simulation_id: str):
     Get simulation posts
 
     Query parameters:
-        platform: Platform type (twitter/reddit)
+        platform: Platform type (threads/facebook)
         limit: Return count (default 50)
         offset: Offset
 
     Returns post list (read from SQLite database)
     """
     try:
-        platform = request.args.get('platform', 'reddit')
+        platform = request.args.get('platform', 'facebook')
         limit = request.args.get('limit', 50, type=int)
         offset = request.args.get('offset', 0, type=int)
         
@@ -8457,7 +8457,7 @@ def interview_agent():
             "simulation_id": "sim_xxxx",                      // Required, simulation ID
             "agent_id": 0,                                    // Required, Agent ID
             "prompt": "What do you think about this?",        // Required, interview question
-            "platform": "twitter",                            // Optional, specify platform (twitter/reddit)
+            "platform": "threads",                            // Optional, specify platform (threads/facebook)
                                                               // When not specified: dual-platform simulation interviews both platforms simultaneously
             "timeout": 60                                     // Optional, timeout (seconds), default 60
         }
@@ -8472,8 +8472,8 @@ def interview_agent():
                     "agent_id": 0,
                     "prompt": "...",
                     "platforms": {
-                        "twitter": {"agent_id": 0, "response": "...", "platform": "twitter"},
-                        "reddit": {"agent_id": 0, "response": "...", "platform": "reddit"}
+                        "threads": {"agent_id": 0, "response": "...", "platform": "threads"},
+                        "facebook": {"agent_id": 0, "response": "...", "platform": "facebook"}
                     }
                 },
                 "timestamp": "2025-12-08T10:00:01"
@@ -8489,7 +8489,7 @@ def interview_agent():
                 "result": {
                     "agent_id": 0,
                     "response": "I think...",
-                    "platform": "twitter",
+                    "platform": "threads",
                     "timestamp": "2025-12-08T10:00:00"
                 },
                 "timestamp": "2025-12-08T10:00:01"
@@ -8505,7 +8505,7 @@ def interview_agent():
             return err
         agent_id = data.get('agent_id')
         prompt = data.get('prompt')
-        platform = data.get('platform')  # Optional: twitter/reddit/None
+        platform = data.get('platform')  # Optional: threads/facebook/None
         timeout = data.get('timeout', 240)
 
         if agent_id is None:
@@ -8525,12 +8525,12 @@ def interview_agent():
             }), 400
 
         # Validate platform parameter
-        if platform and platform not in ("twitter", "reddit"):
+        if platform and platform not in ("threads", "facebook"):
             return jsonify({
                 "success": False,
                 "error": _t(
-                    "platform parameter can only be 'twitter' or 'reddit'",
-                    "platform 参数只能为 'twitter' 或 'reddit'",
+                    "platform parameter can only be 'threads' or 'facebook'",
+                    "platform 参数只能为 'threads' 或 'facebook'",
                     locale,
                 )
             }), 400
@@ -8603,14 +8603,14 @@ def interview_agents_batch():
                 {
                     "agent_id": 0,
                     "prompt": "What do you think about A?",
-                    "platform": "twitter"                 // Optional, specify interview platform for this agent
+                    "platform": "threads"                 // Optional, specify interview platform for this agent
                 },
                 {
                     "agent_id": 1,
                     "prompt": "What do you think about B?"  // If platform not specified, uses default
                 }
             ],
-            "platform": "reddit",                         // Optional, default platform (overridden by each item's platform)
+            "platform": "facebook",                         // Optional, default platform (overridden by each item's platform)
                                                           // When not specified: dual-platform simulation interviews each agent on both platforms simultaneously
             "timeout": 120                                // Optional, timeout (seconds), default 120
         }
@@ -8623,10 +8623,10 @@ def interview_agents_batch():
                 "result": {
                     "interviews_count": 4,
                     "results": {
-                        "twitter_0": {"agent_id": 0, "response": "...", "platform": "twitter"},
-                        "reddit_0": {"agent_id": 0, "response": "...", "platform": "reddit"},
-                        "twitter_1": {"agent_id": 1, "response": "...", "platform": "twitter"},
-                        "reddit_1": {"agent_id": 1, "response": "...", "platform": "reddit"}
+                        "threads_0": {"agent_id": 0, "response": "...", "platform": "threads"},
+                        "facebook_0": {"agent_id": 0, "response": "...", "platform": "facebook"},
+                        "threads_1": {"agent_id": 1, "response": "...", "platform": "threads"},
+                        "facebook_1": {"agent_id": 1, "response": "...", "platform": "facebook"}
                     }
                 },
                 "timestamp": "2025-12-08T10:00:01"
@@ -8641,7 +8641,7 @@ def interview_agents_batch():
         if err:
             return err
         interviews = data.get('interviews')
-        platform = data.get('platform')  # Optional: twitter/reddit/None
+        platform = data.get('platform')  # Optional: threads/facebook/None
         timeout = data.get('timeout', 240)
 
         if not interviews or not isinstance(interviews, list):
@@ -8655,12 +8655,12 @@ def interview_agents_batch():
             }), 400
 
         # Validate platform parameter
-        if platform and platform not in ("twitter", "reddit"):
+        if platform and platform not in ("threads", "facebook"):
             return jsonify({
                 "success": False,
                 "error": _t(
-                    "platform parameter can only be 'twitter' or 'reddit'",
-                    "platform 参数只能为 'twitter' 或 'reddit'",
+                    "platform parameter can only be 'threads' or 'facebook'",
+                    "platform 参数只能为 'threads' 或 'facebook'",
                     locale,
                 )
             }), 400
@@ -8687,12 +8687,12 @@ def interview_agents_batch():
                 }), 400
             # Validate each item's platform (if present)
             item_platform = interview.get('platform')
-            if item_platform and item_platform not in ("twitter", "reddit"):
+            if item_platform and item_platform not in ("threads", "facebook"):
                 return jsonify({
                     "success": False,
                     "error": _t(
-                        f"Interview list item {i+1} platform can only be 'twitter' or 'reddit'",
-                        f"访谈列表第 {i+1} 项的 platform 只能为 'twitter' 或 'reddit'",
+                        f"Interview list item {i+1} platform can only be 'threads' or 'facebook'",
+                        f"访谈列表第 {i+1} 项的 platform 只能为 'threads' 或 'facebook'",
                         locale,
                     )
                 }), 400
@@ -8764,7 +8764,7 @@ def get_interview_history():
     Request (JSON):
         {
             "simulation_id": "sim_xxxx",  // Required, simulation ID
-            "platform": "reddit",          // Optional, platform type (reddit/twitter)
+            "platform": "facebook",          // Optional, platform type (facebook/threads)
                                            // If not specified, return all history for both platforms
             "agent_id": 0,                 // Optional, only get this agent's interview history
             "limit": 100                   // Optional, return count, default 100
@@ -8781,7 +8781,7 @@ def get_interview_history():
                         "response": "I think...",
                         "prompt": "What do you think about this?",
                         "timestamp": "2025-12-08T10:00:00",
-                        "platform": "reddit"
+                        "platform": "facebook"
                     },
                     ...
                 ]
@@ -8841,8 +8841,8 @@ def get_env_status():
             "data": {
                 "simulation_id": "sim_xxxx",
                 "env_alive": true,
-                "twitter_available": true,
-                "reddit_available": true,
+                "threads_available": true,
+                "facebook_available": true,
                 "message": "Environment is running, can receive interview commands"
             }
         }
@@ -8870,8 +8870,8 @@ def get_env_status():
             "data": {
                 "simulation_id": simulation_id,
                 "env_alive": env_alive,
-                "twitter_available": env_status.get("twitter_available", False),
-                "reddit_available": env_status.get("reddit_available", False),
+                "threads_available": env_status.get("threads_available", False),
+                "facebook_available": env_status.get("facebook_available", False),
                 "message": message
             }
         })
@@ -9080,7 +9080,7 @@ def export_simulation_data(simulation_id: str):
                 f'../../uploads/simulations/{simulation_id}'
             )
             all_posts = []
-            for platform in ('twitter', 'reddit'):
+            for platform in ('threads', 'facebook'):
                 db_path = os.path.join(sim_dir, f"{platform}_simulation.db")
                 if os.path.exists(db_path):
                     try:
@@ -9209,8 +9209,8 @@ def compare_simulations():
                 {
                     'round_num': r['round_num'],
                     'total_actions': r['total_actions'],
-                    'twitter_actions': r['twitter_actions'],
-                    'reddit_actions': r['reddit_actions'],
+                    'threads_actions': r['threads_actions'],
+                    'facebook_actions': r['facebook_actions'],
                 }
                 for r in timeline
             ]
@@ -9801,7 +9801,7 @@ def generate_simulation_article(simulation_id: str):
             return ranked[:limit]
 
         viral_lines = []
-        for plat in ('twitter', 'reddit'):
+        for plat in ('threads', 'facebook'):
             for post in _top_posts(plat, limit=3):
                 text = post['content'][:220].replace('\n', ' ').strip()
                 eng = post['likes'] + post['reposts'] + post['quotes'] + post['replies']
@@ -10004,7 +10004,7 @@ def _build_agent_trace(simulation_id: str, agent_name: str) -> dict:
         'LIKE_POST', 'REPOST', 'QUOTE_POST', 'LIKE_COMMENT', 'CREATE_COMMENT',
     })
 
-    for platform in ('twitter', 'reddit'):
+    for platform in ('threads', 'facebook'):
         actions_path = os.path.join(sim_dir, platform, 'actions.jsonl')
         if not os.path.exists(actions_path):
             continue
@@ -10127,7 +10127,7 @@ def trace_interview_agent(simulation_id: str, agent_name: str):
 
         # --- Get agent profile ---
         profile_lines = []
-        profiles_file = os.path.join(sim_dir, 'reddit_profiles.json')
+        profiles_file = os.path.join(sim_dir, 'facebook_profiles.json')
         if os.path.exists(profiles_file):
             try:
                 with open(profiles_file, 'r', encoding='utf-8') as f:
@@ -10647,7 +10647,7 @@ def get_interaction_network(simulation_id: str):
                 agents[name] = {'name': name, 'platforms': set(), 'actions': 0}
             agents[name]['platforms'].add(platform)
 
-        for platform in ('twitter', 'reddit', 'polymarket'):
+        for platform in ('threads', 'facebook', 'polymarket'):
             actions_path = os.path.join(sim_dir, platform, 'actions.jsonl')
             if not os.path.exists(actions_path):
                 continue
@@ -10943,28 +10943,28 @@ def _demo_classify_archetype(entity_type) -> str:
 
 
 def _demo_load_profiles(sim_dir: str) -> list:
-    """Load agent profiles from reddit_profiles.json (primary) or twitter_profiles.csv.
+    """Load agent profiles from facebook_profiles.json (primary) or threads_profiles.csv.
 
     Returns a list of dicts with normalized demographic fields.
     """
     profiles = []
-    reddit_path = os.path.join(sim_dir, "reddit_profiles.json")
-    if os.path.exists(reddit_path):
+    facebook_path = os.path.join(sim_dir, "facebook_profiles.json")
+    if os.path.exists(facebook_path):
         try:
-            with open(reddit_path, 'r', encoding='utf-8') as f:
+            with open(facebook_path, 'r', encoding='utf-8') as f:
                 profiles = json.load(f)
         except Exception as e:
-            logger.warning(f"Failed to load reddit_profiles.json: {e}")
+            logger.warning(f"Failed to load facebook_profiles.json: {e}")
 
     if not profiles:
-        twitter_path = os.path.join(sim_dir, "twitter_profiles.csv")
-        if os.path.exists(twitter_path):
+        threads_path = os.path.join(sim_dir, "threads_profiles.csv")
+        if os.path.exists(threads_path):
             try:
-                with open(twitter_path, 'r', encoding='utf-8') as f:
+                with open(threads_path, 'r', encoding='utf-8') as f:
                     reader = csv.DictReader(f)
                     profiles = list(reader)
             except Exception as e:
-                logger.warning(f"Failed to load twitter_profiles.csv: {e}")
+                logger.warning(f"Failed to load threads_profiles.csv: {e}")
 
     return profiles if isinstance(profiles, list) else []
 
@@ -11311,9 +11311,9 @@ def get_demographic_breakdown(simulation_id: str):
                 "total_agents": agents_in_profiles,
                 "agents_with_stance": agents_with_stance,
                 "has_trajectory": bool(final_stance),
-                "source": "reddit_profiles.json" if os.path.exists(
-                    os.path.join(sim_dir, "reddit_profiles.json")
-                ) else "twitter_profiles.csv",
+                "source": "facebook_profiles.json" if os.path.exists(
+                    os.path.join(sim_dir, "facebook_profiles.json")
+                ) else "threads_profiles.csv",
             },
         }
 

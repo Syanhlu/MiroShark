@@ -46,7 +46,7 @@ metadata blob carrying the reproducible citation primitives::
 
     {
       "version": "<simulation_id>",
-      "capabilities": ["swarm-simulation", "twitter", "reddit", "polymarket"],
+      "capabilities": ["swarm-simulation", "threads", "facebook", "polymarket"],
       "category": "prediction",
       "modelFamily": "MiroShark",
       "description": "<scenario>",
@@ -343,10 +343,10 @@ def _derive_capabilities(repro_blob: Dict[str, Any]) -> List[str]:
     caps: List[str] = ["swarm-simulation", "multi-agent", "consensus-tracking"]
     platforms = repro_blob.get("platforms") or {}
     if isinstance(platforms, dict):
-        if platforms.get("twitter"):
-            caps.append("twitter")
-        if platforms.get("reddit"):
-            caps.append("reddit")
+        if platforms.get("threads"):
+            caps.append("threads")
+        if platforms.get("facebook"):
+            caps.append("facebook")
         if platforms.get("polymarket"):
             caps.append("polymarket")
     return caps
@@ -439,8 +439,8 @@ def build_submission(
 
     platforms = repro_blob.get("platforms") or {}
     if isinstance(platforms, dict):
-        metadata["twitterEnabled"] = bool(platforms.get("twitter", False))
-        metadata["redditEnabled"] = bool(platforms.get("reddit", False))
+        metadata["threadsEnabled"] = bool(platforms.get("threads", False))
+        metadata["facebookEnabled"] = bool(platforms.get("facebook", False))
         metadata["polymarketEnabled"] = bool(platforms.get("polymarket", False))
 
     if base_url:

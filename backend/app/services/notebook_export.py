@@ -156,10 +156,10 @@ def _platforms_summary(platforms: Optional[Dict[str, Any]]) -> str:
     if not isinstance(platforms, dict):
         return "—"
     parts: List[str] = []
-    if platforms.get("twitter"):
-        parts.append("Twitter")
-    if platforms.get("reddit"):
-        parts.append("Reddit")
+    if platforms.get("threads"):
+        parts.append("Threads")
+    if platforms.get("facebook"):
+        parts.append("Facebook")
     if platforms.get("polymarket"):
         count = platforms.get("polymarket_market_count")
         try:

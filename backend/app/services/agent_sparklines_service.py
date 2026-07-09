@@ -26,7 +26,7 @@ Design notes
   so labels never drift across surfaces.
 * **Names from the profile files.** ``belief_positions`` is keyed by
   integer ``user_id``; the human-readable name comes from
-  ``reddit_profiles.json`` (then ``polymarket_profiles.json``), the same
+  ``facebook_profiles.json`` (then ``polymarket_profiles.json``), the same
   lookup the transcript renderer uses. An id with no profile row falls
   back to ``"Agent <id>"`` so a sparkline is never anonymous.
 * **Deterministic order.** Agents are sorted most-bullish-first by final
@@ -74,13 +74,13 @@ STANCE_COLORS: dict[str, str] = {
 def _load_profile_names(sim_dir: str) -> dict[int, str]:
     """``user_id → display name`` lookup for the simulation's agents.
 
-    Reads ``reddit_profiles.json`` first (every run produces it), then
+    Reads ``facebook_profiles.json`` first (every run produces it), then
     ``polymarket_profiles.json`` as a secondary source. Mirrors the
     transcript renderer's lookup so an agent's name is identical across
-    both surfaces. First write wins, so reddit_profiles takes precedence.
+    both surfaces. First write wins, so facebook_profiles takes precedence.
     """
     out: dict[int, str] = {}
-    for filename in ("reddit_profiles.json", "polymarket_profiles.json"):
+    for filename in ("facebook_profiles.json", "polymarket_profiles.json"):
         data = _safe_load_json(os.path.join(sim_dir, filename))
         if not isinstance(data, list):
             continue

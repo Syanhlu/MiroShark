@@ -48,7 +48,7 @@ from app.services import agent_export  # noqa: E402
 
 
 def _write_reddit_profiles(sim_dir: Path, profiles: list[dict]) -> None:
-    (sim_dir / "reddit_profiles.json").write_text(
+    (sim_dir / "facebook_profiles.json").write_text(
         json.dumps(profiles), encoding="utf-8"
     )
 
@@ -121,7 +121,7 @@ def test_returns_none_when_profile_file_is_empty_list(tmp_path: Path):
 def test_returns_none_when_profile_file_is_corrupt(tmp_path: Path):
     sim_dir = tmp_path / "sim_corrupt"
     sim_dir.mkdir()
-    (sim_dir / "reddit_profiles.json").write_text("{not json", encoding="utf-8")
+    (sim_dir / "facebook_profiles.json").write_text("{not json", encoding="utf-8")
     assert agent_export.build_agent_export("sim_corrupt", str(sim_dir)) is None
 
 

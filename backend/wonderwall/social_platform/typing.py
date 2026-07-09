@@ -49,25 +49,15 @@ class ActionType(Enum):
     LISTEN_FROM_GROUP = "listen_from_group"
 
     @classmethod
-    def get_default_twitter_actions(cls):
+    def get_default_facebook_actions(cls):
+        # Facebook Groups: no public dislike (reactions default positive),
+        # REPORT_POST for rule violations, no QUOTE_POST (groups don't quote).
         return [
-            cls.CREATE_POST,
-            cls.LIKE_POST,
-            cls.REPOST,
-            cls.FOLLOW,
-            cls.DO_NOTHING,
-            cls.QUOTE_POST,
-        ]
-
-    @classmethod
-    def get_default_reddit_actions(cls):
-        return [
-            cls.LIKE_POST,
-            cls.DISLIKE_POST,
             cls.CREATE_POST,
             cls.CREATE_COMMENT,
+            cls.LIKE_POST,
             cls.LIKE_COMMENT,
-            cls.DISLIKE_COMMENT,
+            cls.REPOST,
             cls.SEARCH_POSTS,
             cls.SEARCH_USER,
             cls.TREND,
@@ -75,6 +65,44 @@ class ActionType(Enum):
             cls.DO_NOTHING,
             cls.FOLLOW,
             cls.MUTE,
+            cls.REPORT_POST,
+        ]
+
+    @classmethod
+    def get_default_threads_actions(cls):
+        # Threads: closest to Twitter (no dislike, no group-chat actions),
+        # but real threaded replies (CREATE_COMMENT/LIKE_COMMENT) are the
+        # platform's defining mechanic — Twitter's own preset here has no
+        # comment action at all, just posts/quotes.
+        return [
+            cls.CREATE_POST,
+            cls.CREATE_COMMENT,
+            cls.LIKE_POST,
+            cls.LIKE_COMMENT,
+            cls.REPOST,
+            cls.QUOTE_POST,
+            cls.FOLLOW,
+            cls.MUTE,
+            cls.REPORT_POST,
+            cls.DO_NOTHING,
+        ]
+
+    @classmethod
+    def get_default_tiktok_actions(cls):
+        # TikTok: no dislike, no quote/duet (v1 — a stretch feature since it's
+        # cosmetically a re-creation, not a real video re-mix here). CREATE_POST
+        # stands in for posting a video (caption/description, not real video);
+        # CREATE_COMMENT is the real high-volume payload, not a secondary action.
+        return [
+            cls.CREATE_POST,
+            cls.CREATE_COMMENT,
+            cls.LIKE_POST,
+            cls.LIKE_COMMENT,
+            cls.REPOST,
+            cls.FOLLOW,
+            cls.MUTE,
+            cls.REPORT_POST,
+            cls.DO_NOTHING,
         ]
 
 
@@ -86,5 +114,6 @@ class RecsysType(Enum):
 
 
 class DefaultPlatformType(Enum):
-    TWITTER = "twitter"
-    REDDIT = "reddit"
+    FACEBOOK = "facebook"
+    THREADS = "threads"
+    TIKTOK = "tiktok"

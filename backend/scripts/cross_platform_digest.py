@@ -10,12 +10,12 @@ Usage:
     log = CrossPlatformLog()
 
     # After each round, record what happened:
-    log.record("twitter", actual_actions)
+    log.record("threads", actual_actions)
 
     # Before the next round, build a digest for an agent:
-    digest = log.build_digest(agent_id=5, exclude_platform="reddit")
-    # Returns a string summarizing agent 5's recent Twitter activity
-    # (excludes Reddit since that's the platform about to act)
+    digest = log.build_digest(agent_id=5, exclude_platform="facebook")
+    # Returns a string summarizing agent 5's recent Threads activity
+    # (excludes Facebook since that's the platform about to act)
 """
 from collections import defaultdict
 from typing import Dict, List, Optional
@@ -73,7 +73,7 @@ class CrossPlatformLog:
         Record a batch of actions from one platform round.
 
         Args:
-            platform: Platform name ("twitter", "reddit", "polymarket", ...)
+            platform: Platform name ("threads", "facebook", "polymarket", ...)
             actions: List of action dicts, each with at least:
                      agent_id, agent_name, action_type, action_args
         """

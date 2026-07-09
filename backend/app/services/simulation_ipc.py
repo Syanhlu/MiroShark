@@ -190,8 +190,8 @@ class SimulationIPCClient:
             agent_id: Agent ID
             prompt: Interview question
             platform: Specify platform (optional)
-                - "twitter": Interview on Twitter platform only
-                - "reddit": Interview on Reddit platform only
+                - "threads": Interview on Threads platform only
+                - "facebook": Interview on Facebook platform only
                 - None: Interview both platforms in dual-platform mode, or the active platform in single-platform mode
             timeout: Timeout in seconds
 
@@ -223,8 +223,8 @@ class SimulationIPCClient:
         Args:
             interviews: Interview list, each element contains {"agent_id": int, "prompt": str, "platform": str (optional)}
             platform: Default platform (optional, overridden by each interview item's platform)
-                - "twitter": Default to interviewing on Twitter platform only
-                - "reddit": Default to interviewing on Reddit platform only
+                - "threads": Default to interviewing on Threads platform only
+                - "facebook": Default to interviewing on Facebook platform only
                 - None: Interview each agent on both platforms in dual-platform mode
             timeout: Timeout in seconds
 

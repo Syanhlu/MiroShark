@@ -66,6 +66,7 @@ class Platform:
         max_rec_post_len: int = 2,
         following_post_count=3,
         use_openai_embedding: bool = False,
+        enable_like_score: bool = False,
     ):
         self.db_path = db_path
         self.recsys_type = recsys_type
@@ -107,6 +108,13 @@ class Platform:
         # rec prob between random and personalized
         self.rec_prob = 0.7
         self.use_openai_embedding = use_openai_embedding
+        # Whether the twhin-bert recsys also weights similarity to a user's
+        # previously-liked posts (in addition to recency), not just used at
+        # all by RecsysType.TWHIN. Off by default (matches prior behavior,
+        # which always called rec_sys_personalized_twh with the function's
+        # own False default); a platform whose real "For You"-style feed is
+        # engagement-signal-driven (e.g. TikTok) can turn it on.
+        self.enable_like_score = enable_like_score
 
         # Parameters for the platform's internal trending rules
         self.trend_num_days = 7
@@ -389,6 +397,7 @@ class Platform:
                     self.max_rec_post_len,
                     self.sandbox_clock.time_step,
                     use_openai_embedding=self.use_openai_embedding,
+                    enable_like_score=self.enable_like_score,
                 )
             except Exception as e:
                 twitter_log.error(e)

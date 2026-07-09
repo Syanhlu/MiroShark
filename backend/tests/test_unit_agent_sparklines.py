@@ -44,7 +44,7 @@ def _write_trajectory(sim_dir: Path, snapshots: list[dict]) -> None:
 
 
 def _write_profiles(sim_dir: Path, profiles: list[dict]) -> None:
-    (sim_dir / "reddit_profiles.json").write_text(
+    (sim_dir / "facebook_profiles.json").write_text(
         json.dumps(profiles), encoding="utf-8"
     )
 

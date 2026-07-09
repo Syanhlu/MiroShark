@@ -508,7 +508,7 @@ paths:
                   properties:
                     platform:
                       type: string
-                      enum: [twitter, reddit, parallel]
+                      enum: [threads, facebook, parallel]
                       default: parallel
                     max_rounds:
                       type: integer
@@ -540,8 +540,8 @@ paths:
                           simulation_id: { type: string }
                           runner_status: { type: string, enum: [idle, preparing, running, paused, completed, failed] }
                           process_pid: { type: integer }
-                          twitter_running: { type: boolean }
-                          reddit_running: { type: boolean }
+                          threads_running: { type: boolean }
+                          facebook_running: { type: boolean }
                           started_at: { type: string, format: date-time }
                           graph_memory_update_enabled: { type: boolean }
                           force_restarted: { type: boolean }
@@ -703,7 +703,7 @@ paths:
         - $ref: "#/components/parameters/SimulationIdPath"
         - in: query
           name: platform
-          schema: { type: string, enum: [twitter, reddit] }
+          schema: { type: string, enum: [threads, facebook] }
       responses:
         "200":
           description: Detailed run status.
@@ -757,7 +757,7 @@ paths:
   /api/simulation/{simulation_id}/posts:
     get:
       tags: [Live State]
-      summary: Paginated posts (Twitter + Reddit) generated during the run.
+      summary: Paginated posts (Threads + Facebook) generated during the run.
       parameters:
         - $ref: "#/components/parameters/SimulationIdPath"
         - in: query
@@ -768,7 +768,7 @@ paths:
           schema: { type: integer, default: 0 }
         - in: query
           name: platform
-          schema: { type: string, enum: [twitter, reddit] }
+          schema: { type: string, enum: [threads, facebook] }
       responses:
         "200":
           description: Posts page.
@@ -1165,7 +1165,7 @@ paths:
               required: [simulation_id]
               properties:
                 simulation_id: { type: string }
-                platform: { type: string, enum: [twitter, reddit] }
+                platform: { type: string, enum: [threads, facebook] }
                 agent_id:
                   type: integer
                   description: Restrict to a single agent.
@@ -2158,7 +2158,7 @@ paths:
         `_avg_position` mean of per-topic `belief_positions` every other
         surface averages, and the final stance uses the same `±0.2`
         threshold, so an agent tagged "bullish" here is "bullish" in the
-        transcript. Agent names come from `reddit_profiles.json`; an id
+        transcript. Agent names come from `facebook_profiles.json`; an id
         with no profile row falls back to `"Agent <id>"`.
 
         Agents are ordered most-bullish-first by final position (ties
@@ -2353,7 +2353,7 @@ paths:
         Returns a complete JSON document carrying every parameter
         another operator would need to re-run the same simulation —
         scenario text, agent count, total rounds, platform toggles
-        (twitter / reddit / polymarket + market count), the four
+        (threads / facebook / polymarket + market count), the four
         cadence knobs from `time_config` (minutes per round, total
         hours, peak / off-peak windows), any operator-injected director
         events, and a `lineage` block describing whether this
@@ -5275,7 +5275,7 @@ components:
         headline: { type: string }
         body: { type: string }
         round: { type: integer, minimum: 0 }
-        platform: { type: string, enum: [twitter, reddit, both] }
+        platform: { type: string, enum: [threads, facebook, both] }
 
     FrameMetadataButton:
       type: object
@@ -5399,10 +5399,10 @@ components:
         progress_percent: { type: number }
         simulated_hours: { type: integer }
         total_simulation_hours: { type: integer }
-        twitter_running: { type: boolean }
-        reddit_running: { type: boolean }
-        twitter_actions_count: { type: integer }
-        reddit_actions_count: { type: integer }
+        threads_running: { type: boolean }
+        facebook_running: { type: boolean }
+        threads_actions_count: { type: integer }
+        facebook_actions_count: { type: integer }
         total_actions_count: { type: integer }
         started_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -6517,8 +6517,8 @@ components:
       required:
         - project_id
         - graph_id
-        - enable_twitter
-        - enable_reddit
+        - enable_threads
+        - enable_facebook
         - enable_polymarket
         - polymarket_market_count
         - country
@@ -6535,12 +6535,12 @@ components:
             The knowledge graph the sim drew its agents from. Required
             by `/api/simulation/create` when the project hasn't
             recorded a default graph yet.
-        enable_twitter:
+        enable_threads:
           type: boolean
-          description: Whether the sim ran the Twitter platform leg.
-        enable_reddit:
+          description: Whether the sim ran the Threads platform leg.
+        enable_facebook:
           type: boolean
-          description: Whether the sim ran the Reddit platform leg.
+          description: Whether the sim ran the Facebook platform leg.
         enable_polymarket:
           type: boolean
           description: Whether the sim ran the Polymarket platform leg.
@@ -6667,7 +6667,7 @@ components:
         name:
           type: string
           description: |
-            Display name from `reddit_profiles.json`
+            Display name from `facebook_profiles.json`
             (then `polymarket_profiles.json`); `"Agent <id>"` when no
             profile row exists.
         final_stance:
@@ -6725,7 +6725,7 @@ components:
         username:
           type: string
           description: |
-            Reddit-style handle from `reddit_profiles.json` (then
+            Facebook-style handle from `facebook_profiles.json` (then
             `polymarket_profiles.json`); empty string when no profile
             row carries one.
         name:
@@ -6775,7 +6775,7 @@ components:
             field was a non-list value.
         karma:
           type: integer
-          description: Reddit-style karma counter; defaults to `0` when absent from the profile.
+          description: Facebook-style karma counter; defaults to `0` when absent from the profile.
         created_at:
           type: string
           description: ISO-style date the profile was generated; empty string when absent.
@@ -8391,17 +8391,17 @@ components:
             four boolean / integer parameters that together with the
             scenario decide which channels the agents post to.
           required:
-            - twitter
-            - reddit
+            - threads
+            - facebook
             - polymarket
             - polymarket_market_count
           properties:
-            twitter:
+            threads:
               type: boolean
-              description: Whether the simulation enabled the Twitter platform.
-            reddit:
+              description: Whether the simulation enabled the Threads platform.
+            facebook:
               type: boolean
-              description: Whether the simulation enabled the Reddit platform.
+              description: Whether the simulation enabled the Facebook platform.
             polymarket:
               type: boolean
               description: Whether the simulation enabled prediction-market trading.

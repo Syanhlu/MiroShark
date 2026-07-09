@@ -197,8 +197,8 @@ const formatSegmentLabel = (raw) => {
     male: tr('Male', '男性', { de: 'Männlich', fr: 'Homme' }),
     female: tr('Female', '女性', { de: 'Weiblich', fr: 'Femme' }),
     other: tr('Other', '其他', { de: 'Sonstige', fr: 'Autre' }),
-    twitter: 'X / Twitter',
-    reddit: 'Reddit',
+    threads: 'Threads',
+    facebook: 'Facebook',
     polymarket: 'Polymarket',
   }
   return map[raw] || raw

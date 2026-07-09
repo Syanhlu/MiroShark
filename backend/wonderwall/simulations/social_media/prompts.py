@@ -89,3 +89,45 @@ class RedditPromptBuilder(BasePromptBuilder):
             locale,
             description_block=description_block,
         )
+
+
+class FacebookPromptBuilder(BasePromptBuilder):
+    """Builds the system prompt for a Facebook-Groups-style simulation."""
+
+    def build_system_prompt(self, user_info) -> str:
+        locale = get_active_locale()
+        description_block = (
+            _build_description_block(user_info, locale)
+            + _build_demographics(user_info, locale)
+        )
+        return get_prompt(
+            "social_simulations.facebook_system",
+            locale,
+            description_block=description_block,
+        )
+
+
+class ThreadsPromptBuilder(BasePromptBuilder):
+    """Builds the system prompt for a Threads-style simulation."""
+
+    def build_system_prompt(self, user_info) -> str:
+        locale = get_active_locale()
+        description_block = _build_description_block(user_info, locale)
+        return get_prompt(
+            "social_simulations.threads_system",
+            locale,
+            description_block=description_block,
+        )
+
+
+class TikTokPromptBuilder(BasePromptBuilder):
+    """Builds the system prompt for a TikTok-style simulation."""
+
+    def build_system_prompt(self, user_info) -> str:
+        locale = get_active_locale()
+        description_block = _build_description_block(user_info, locale)
+        return get_prompt(
+            "social_simulations.tiktok_system",
+            locale,
+            description_block=description_block,
+        )

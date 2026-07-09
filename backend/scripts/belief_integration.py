@@ -1,7 +1,7 @@
 """
 Belief system integration helpers for simulation scripts.
 
-Provides functions that the simulation scripts (run_reddit, run_parallel)
+Provides functions that the simulation scripts (run_facebook, run_parallel)
 call to initialize, update, and inject belief state. Keeps the belief
 logic in one place instead of duplicating across scripts.
 """

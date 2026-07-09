@@ -319,7 +319,7 @@ def format_seed_for_prompt(seed: Dict[str, Any]) -> str:
     interesting = (
         'age', 'sex', 'marital_status', 'education_level', 'occupation',
         'industry', 'cultural_background', 'income_bracket', 'household_income',
-        'planning_area', 'state', 'province', 'region', 'district', 'city',
+        'planning_area', 'state', 'province', 'region', 'district', 'city', 'zone',
         'country', 'hobby', 'skill', 'persona',
     )
     parts: List[str] = []

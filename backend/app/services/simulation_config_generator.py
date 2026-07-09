@@ -140,15 +140,15 @@ class PlatformConfig:
     tunable scenario assumptions, not empirical constants.
 
     - viral_threshold: In a simulation of ~50-200 agents, 10-15 interactions is
-      roughly the top 5-10% of posts. Real Twitter virality thresholds are
+      roughly the top 5-10% of posts. Real Threads virality thresholds are
       orders of magnitude higher, but our agent population is proportionally smaller.
     - echo_chamber_strength: 0.0 = no clustering, 1.0 = fully siloed. The defaults
-      (0.5 Twitter, 0.6 Reddit) reflect the assumption that Reddit's subreddit
-      structure creates slightly stronger echo chambers than Twitter's timeline.
+      (0.5 Threads, 0.6 Facebook) reflect the assumption that Facebook's group/feed
+      structure creates slightly stronger echo chambers than Threads's timeline.
     - Recommendation weights: These control the feed algorithm's trade-off between
       fresh content, popular content, and content relevant to the agent's interests.
     """
-    platform: str  # twitter or reddit
+    platform: str  # threads or facebook
 
     # Recommendation algorithm weights (must sum to 1.0)
     recency_weight: float = 0.4   # Favor recent content
@@ -183,8 +183,8 @@ class SimulationParameters:
     event_config: EventConfig = field(default_factory=EventConfig)
 
     # Platform configuration
-    twitter_config: Optional[PlatformConfig] = None
-    reddit_config: Optional[PlatformConfig] = None
+    threads_config: Optional[PlatformConfig] = None
+    facebook_config: Optional[PlatformConfig] = None
 
     # LLM configuration
     llm_model: str = ""
@@ -205,8 +205,8 @@ class SimulationParameters:
             "time_config": time_dict,
             "agent_configs": [asdict(a) for a in self.agent_configs],
             "event_config": asdict(self.event_config),
-            "twitter_config": asdict(self.twitter_config) if self.twitter_config else None,
-            "reddit_config": asdict(self.reddit_config) if self.reddit_config else None,
+            "threads_config": asdict(self.threads_config) if self.threads_config else None,
+            "facebook_config": asdict(self.facebook_config) if self.facebook_config else None,
             "llm_model": self.llm_model,
             "llm_base_url": self.llm_base_url,
             "generated_at": self.generated_at,
@@ -270,8 +270,8 @@ class SimulationConfigGenerator:
         simulation_requirement: str,
         document_text: str,
         entities: List[EntityNode],
-        enable_twitter: bool = True,
-        enable_reddit: bool = True,
+        enable_threads: bool = True,
+        enable_facebook: bool = True,
         polymarket_market_count: int = 1,
         progress_callback: Optional[Callable[[int, int, str], None]] = None,
     ) -> SimulationParameters:
@@ -285,8 +285,8 @@ class SimulationConfigGenerator:
             simulation_requirement: Simulation requirement description
             document_text: Original document content
             entities: Filtered entity list
-            enable_twitter: Whether to enable Twitter
-            enable_reddit: Whether to enable Reddit
+            enable_threads: Whether to enable Threads
+            enable_facebook: Whether to enable Facebook
             progress_callback: Progress callback function(current_step, total_steps, message)
 
         Returns:
@@ -385,14 +385,14 @@ class SimulationConfigGenerator:
 
         # ========== Final step: Generate platform configuration ==========
         report_progress(total_steps, "Generating platform configuration...")
-        twitter_config = None
-        reddit_config = None
+        threads_config = None
+        facebook_config = None
 
-        if enable_twitter:
-            # Twitter: slightly favors recency, moderate echo chamber.
+        if enable_threads:
+            # Threads: slightly favors recency, moderate echo chamber.
             # See PlatformConfig docstring for rationale behind these defaults.
-            twitter_config = PlatformConfig(
-                platform="twitter",
+            threads_config = PlatformConfig(
+                platform="threads",
                 recency_weight=0.4,
                 popularity_weight=0.3,
                 relevance_weight=0.3,
@@ -400,11 +400,11 @@ class SimulationConfigGenerator:
                 echo_chamber_strength=0.5,
             )
 
-        if enable_reddit:
-            # Reddit: favors popularity (upvotes), slightly stronger echo chamber
-            # (subreddit-like clustering effect).
-            reddit_config = PlatformConfig(
-                platform="reddit",
+        if enable_facebook:
+            # Facebook: favors popularity (upvotes), slightly stronger echo chamber
+            # (group-like clustering effect).
+            facebook_config = PlatformConfig(
+                platform="facebook",
                 recency_weight=0.3,
                 popularity_weight=0.4,
                 relevance_weight=0.3,
@@ -421,8 +421,8 @@ class SimulationConfigGenerator:
             time_config=time_config,
             agent_configs=all_agent_configs,
             event_config=event_config,
-            twitter_config=twitter_config,
-            reddit_config=reddit_config,
+            threads_config=threads_config,
+            facebook_config=facebook_config,
             llm_model=self.model_name,
             llm_base_url=self.base_url,
             generation_reasoning=" | ".join(reasoning_parts)
