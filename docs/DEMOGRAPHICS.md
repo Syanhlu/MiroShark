@@ -28,7 +28,7 @@ The feature is purely additive:
 
 ```bash
 # .env
-DEMOGRAPHICS_COUNTRY=sg     # or "us"
+DEMOGRAPHICS_COUNTRY=sg     # or "us" / "vn"
 ```
 
 Then `pip install -r backend/requirements.txt` to pull `duckdb` and

@@ -61,6 +61,10 @@ _PROMPT_TYPE_PHASES: Dict[str, str] = {
 }
 
 
+def _is_openrouter_base_url(base_url: Optional[str]) -> bool:
+    return "openrouter" in (base_url or "").lower()
+
+
 def _prompt_type_from_caller(caller: str) -> str:
     """Best-effort caller → prompt_type. Falls back to the function name."""
     if caller in _CALLER_PROMPT_TYPES:
@@ -144,16 +148,21 @@ class LLMClient:
         if not self.api_key:
             raise ValueError("LLM_API_KEY is not configured")
 
+        default_headers = {
+            'User-Agent': f'MiroShark/1.0 (LLMClient; model={self.model})',
+        }
+        if _is_openrouter_base_url(self.base_url):
+            default_headers.update({
+                'HTTP-Referer': 'https://www.miroshark.xyz/',
+                'X-OpenRouter-Title': 'MiroShark - Simulate anything, for $1 & less than 10 min.',
+                'X-OpenRouter-Categories': 'roleplay,personal-agent',
+            })
+
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
             timeout=timeout,
-            default_headers={
-                'HTTP-Referer': 'https://www.miroshark.xyz/',
-                'X-OpenRouter-Title': 'MiroShark - Simulate anything, for $1 & less than 10 min.',
-                'X-OpenRouter-Categories': 'roleplay,personal-agent',
-                'User-Agent': f'MiroShark/1.0 (LLMClient; model={self.model})',
-            },
+            default_headers=default_headers,
         )
 
         # Ollama context window size — prevents prompt truncation.
@@ -164,6 +173,14 @@ class LLMClient:
     def _is_ollama(self) -> bool:
         """Check if we're talking to an Ollama server."""
         return '11434' in (self.base_url or '')
+
+    def _is_openrouter(self) -> bool:
+        """Check the effective client base URL for OpenRouter."""
+        return _is_openrouter_base_url(self.base_url)
+
+    def _is_openai_direct(self) -> bool:
+        """Check if we're talking directly to the OpenAI API."""
+        return 'api.openai.com' in (self.base_url or '').lower()
 
     def _supports_anthropic_prompt_cache(self) -> bool:
         """Return True when the configured model is Claude-family and cache flag is on.
@@ -288,11 +305,18 @@ class LLMClient:
 
         effective_max_tokens = max_tokens + self._thinking_budget
 
+        # Direct OpenAI rejects the legacy `max_tokens` on current models
+        # ("use 'max_completion_tokens' instead"); OpenRouter/Ollama and other
+        # OpenAI-compatible endpoints still expect `max_tokens`.
+        token_param = (
+            "max_completion_tokens" if self._is_openai_direct() else "max_tokens"
+        )
+
         kwargs = {
             "model": self.model,
             "messages": effective_messages,
             "temperature": temperature,
-            "max_tokens": effective_max_tokens,
+            token_param: effective_max_tokens,
         }
 
         if response_format:
@@ -311,7 +335,7 @@ class LLMClient:
         # the `metadata`, `tags`, `name` fields we used to set) is dropped
         # at the broadcast boundary. Any extra keys nested under `trace`
         # become Langfuse trace metadata and are filterable in the UI.
-        if not self._is_ollama() and 'openrouter' in (self.base_url or ''):
+        if self._is_openrouter():
             caller = 'unknown'
             for frame_info in inspect.stack()[1:5]:
                 mod = frame_info.filename
@@ -371,7 +395,7 @@ class LLMClient:
             # we want short, deterministic outputs, not a 100-token <think>
             # trace padding every call. Saves 50-80% latency on Qwen3/Gemini-3-Flash
             # in benchmarks; no-ops on models that don't support the flag.
-            if Config.LLM_DISABLE_REASONING:
+            if Config.LLM_DISABLE_REASONING and self._is_openrouter():
                 extra["reasoning"] = {"enabled": False}
             kwargs["extra_body"] = extra
 

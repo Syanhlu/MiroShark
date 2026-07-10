@@ -1353,6 +1353,9 @@ IMPORTANT: Do NOT include karma, friend_count, follower_count, or statuses_count
             "male": "male",
             "female": "female",
             "other": "other",
+            "nam": "male",
+            "nữ": "female",
+            "nu": "female",
         }
         
         return gender_map.get(gender_lower, "other")

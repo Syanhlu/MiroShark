@@ -164,11 +164,14 @@ class EmbeddingService:
         """HTTP POST with retry logic."""
         headers = {
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://www.miroshark.xyz/",
-            "X-OpenRouter-Title": "MiroShark - Simulate anything, for $1 & less than 10 min.",
-            "X-OpenRouter-Categories": "roleplay,personal-agent",
             "User-Agent": "MiroShark/1.0 (EmbeddingService)",
         }
+        if "openrouter" in (self.base_url or "").lower():
+            headers.update({
+                "HTTP-Referer": "https://www.miroshark.xyz/",
+                "X-OpenRouter-Title": "MiroShark - Simulate anything, for $1 & less than 10 min.",
+                "X-OpenRouter-Categories": "roleplay,personal-agent",
+            })
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 

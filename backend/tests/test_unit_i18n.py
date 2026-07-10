@@ -129,13 +129,16 @@ def test_normalize_locale_picks_first_tag_from_accept_language_list():
     assert normalize_locale("en-US,en;q=0.9,zh;q=0.8") == "en"
 
 
-def test_normalize_locale_maps_de_and_fr_prefixes():
+def test_normalize_locale_maps_de_fr_and_vi_prefixes():
     assert normalize_locale("de") == "de"
     assert normalize_locale("de-DE") == "de"
     assert normalize_locale("DE-at") == "de"
     assert normalize_locale("fr") == "fr"
     assert normalize_locale("fr-FR") == "fr"
     assert normalize_locale("FR-ca") == "fr"
+    assert normalize_locale("vi") == "vi"
+    assert normalize_locale("vi-VN") == "vi"
+    assert normalize_locale("VI-vn") == "vi"
 
 
 def test_normalize_locale_unknown_tag_falls_back_to_default():
@@ -147,7 +150,7 @@ def test_normalize_locale_unknown_tag_falls_back_to_default():
 def test_normalize_locale_always_returns_a_supported_value():
     """Any input ends up in ``SUPPORTED`` so downstream code can index safely."""
     for raw in (None, "", "  ", "en", "en-GB", "zh", "zh-TW",
-                "fr", "klingon", "zh-CN,en;q=0.8"):
+                "fr", "vi", "vi-VN", "klingon", "zh-CN,en;q=0.8"):
         assert normalize_locale(raw) in SUPPORTED
 
 
@@ -172,6 +175,14 @@ def test_get_locale_header_wins_over_accept_language():
         headers={"X-MiroShark-Locale": "zh-CN", "Accept-Language": "en-US"},
     )
     assert get_locale(req) == "zh-CN"
+
+
+def test_get_locale_accepts_vietnamese_header():
+    req = _FakeRequest(
+        args={},
+        headers={"X-MiroShark-Locale": "vi-VN", "Accept-Language": "en-US"},
+    )
+    assert get_locale(req) == "vi"
 
 
 def test_get_locale_falls_back_to_accept_language():
@@ -221,22 +232,25 @@ def test_t_falls_back_to_english_when_zh_is_empty_under_zh_cn():
     assert t("hello", "", "zh-CN") == "hello"
 
 
-def test_t_unknown_locale_falls_back_to_english():
+def test_t_unknown_or_untranslated_locale_falls_back_to_english():
     """A call site that hasn't supplied a string for the active locale stays
     English — so adding locales never breaks un-migrated callers."""
     assert t("hello", "你好", "fr") == "hello"
     assert t("hello", "你好", "de") == "hello"
+    assert t("hello", "你好", "vi") == "hello"
     assert t("hello", "你好", "klingon") == "hello"
 
 
-def test_t_returns_german_and_french_when_supplied():
+def test_t_returns_german_french_and_vietnamese_when_supplied():
     assert t("hello", "你好", "de", de="hallo") == "hallo"
     assert t("hello", "你好", "fr", fr="bonjour") == "bonjour"
+    assert t("hello", "你好", "vi", vi="xin chào") == "xin chào"
     # An empty override under its own locale still falls back to English.
     assert t("hello", "你好", "de", de="") == "hello"
-    # Providing de/fr never disturbs the English or Chinese paths.
-    assert t("hello", "你好", "en", de="hallo", fr="bonjour") == "hello"
-    assert t("hello", "你好", "zh-CN", de="hallo", fr="bonjour") == "你好"
+    assert t("hello", "你好", "vi", vi="") == "hello"
+    # Providing de/fr/vi never disturbs the English or Chinese paths.
+    assert t("hello", "你好", "en", de="hallo", fr="bonjour", vi="xin chào") == "hello"
+    assert t("hello", "你好", "zh-CN", de="hallo", fr="bonjour", vi="xin chào") == "你好"
 
 
 # ── apply_i18n ──────────────────────────────────────────────────────────────
@@ -343,6 +357,8 @@ def test_use_locale_normalises_input():
     """The context manager runs raw input through ``normalize_locale``."""
     with use_locale("zh-TW"):
         assert get_active_locale() == "zh-CN"
+    with use_locale("vi-VN"):
+        assert get_active_locale() == "vi"
     with use_locale("klingon"):
         assert get_active_locale() == DEFAULT
 

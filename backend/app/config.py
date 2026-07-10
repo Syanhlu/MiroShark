@@ -30,21 +30,20 @@ class Config:
     # LLM configuration (unified OpenAI format)
     # LLM_PROVIDER: "openai" (default, any OpenAI-compatible API) or "claude-code" (local CLI)
     # Default model is used for profile generation, sim config, memory compaction.
-    # Cloud preset: inception/mercury-2:nitro (diffusion LLM — picked for speed;
-    # off the report's quality path. Fallback for any unset tier.)
+    # Cloud preset: direct OpenAI with the GPT-5.4 family.
     LLM_PROVIDER = os.environ.get('LLM_PROVIDER', 'openai')
     LLM_API_KEY = os.environ.get('LLM_API_KEY')
     LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.openai.com/v1')
-    LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME') or 'inception/mercury-2:nitro'  # `or` so a blank LLM_MODEL_NAME= falls back instead of sending an empty model
+    LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME') or 'gpt-5.4-mini'  # `or` so a blank LLM_MODEL_NAME= falls back instead of sending an empty model
 
     # Smart model — stronger model for intelligence-sensitive workflows
     # (report generation, ontology extraction, graph reasoning).
-    # Defaults to google/gemini-3-flash-preview (stable JSON, fast reports);
+    # Defaults to gpt-5.4 for the highest-leverage quality path;
     # set SMART_MODEL_NAME= (empty) to inherit the default LLM config above.
     SMART_PROVIDER = os.environ.get('SMART_PROVIDER', '')   # "openai", "claude-code", or empty (inherit)
     SMART_API_KEY = os.environ.get('SMART_API_KEY', '')
     SMART_BASE_URL = os.environ.get('SMART_BASE_URL', '')
-    SMART_MODEL_NAME = os.environ.get('SMART_MODEL_NAME', 'google/gemini-3-flash-preview')
+    SMART_MODEL_NAME = os.environ.get('SMART_MODEL_NAME', 'gpt-5.4')
     
     # Neo4j configuration
     NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
@@ -52,10 +51,10 @@ class Config:
     NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'miroshark')
 
     # Embedding configuration
-    # EMBEDDING_PROVIDER: "ollama" (default) uses /api/embed, "openai" uses /v1/embeddings
-    EMBEDDING_PROVIDER = os.environ.get('EMBEDDING_PROVIDER', 'ollama')
-    EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'nomic-embed-text')
-    EMBEDDING_BASE_URL = os.environ.get('EMBEDDING_BASE_URL', 'http://localhost:11434')
+    # EMBEDDING_PROVIDER: "openai" (default) uses /v1/embeddings, "ollama" uses /api/embed
+    EMBEDDING_PROVIDER = os.environ.get('EMBEDDING_PROVIDER', 'openai')
+    EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'text-embedding-3-large')
+    EMBEDDING_BASE_URL = os.environ.get('EMBEDDING_BASE_URL', 'https://api.openai.com')
     EMBEDDING_API_KEY = os.environ.get('EMBEDDING_API_KEY', '')
     EMBEDDING_DIMENSIONS = int(os.environ.get('EMBEDDING_DIMENSIONS', '768'))
     # How many texts to send per embedding HTTP request. OpenAI/OpenRouter
@@ -145,14 +144,15 @@ class Config:
     # Triggers for notable figures (politicians, CEOs, etc.) or when graph context is thin
     WEB_ENRICHMENT_ENABLED = os.environ.get('WEB_ENRICHMENT_ENABLED', 'true').lower() == 'true'
     # Dedicated model for web research (web_research + deep_research + url_fetch).
-    # Defaults to deepseek/deepseek-v4-flash:online (bake-off value winner). Any
-    # ":online" OpenRouter variant works; set WEB_SEARCH_MODEL= (empty) to inherit
-    # the default LLM (only viable if the default model can browse).
-    WEB_SEARCH_MODEL = os.environ.get('WEB_SEARCH_MODEL', 'deepseek/deepseek-v4-flash:online')
+    # Blank by default for direct OpenAI: web enrichment skips model-only
+    # research unless SearXNG is configured. OpenRouter users can set an
+    # ":online" model per deployment.
+    WEB_SEARCH_MODEL = os.environ.get('WEB_SEARCH_MODEL', '')
 
     # SearXNG metasearch — when set, web enrichment does real search-then-
     # synthesize with the DEFAULT LLM instead of requiring a websearch-enabled
-    # model (:online). Falls back to WEB_SEARCH_MODEL when unset or on failure.
+    # model (:online on OpenRouter). Falls back to WEB_SEARCH_MODEL when unset
+    # or on failure.
     SEARXNG_BASE_URL = (os.environ.get('MIROSHARK_SEARXNG_BASE_URL', '') or '').strip().rstrip('/')
     SEARXNG_TIMEOUT = int(os.environ.get('MIROSHARK_SEARXNG_TIMEOUT', '10'))
     SEARXNG_MAX_RESULTS = int(os.environ.get('MIROSHARK_SEARXNG_MAX_RESULTS', '5'))
@@ -164,21 +164,23 @@ class Config:
     FIRECRAWL_API_KEY = os.environ.get('MIROSHARK_FIRECRAWL_API_KEY', '')
 
     # Wonderwall model — model for Wonderwall/CAMEL agent simulation loop.
-    # Defaults to deepseek/deepseek-v4-flash:nitro; set WONDERWALL_MODEL_NAME=
+    # Defaults to gpt-5.4-nano; set WONDERWALL_MODEL_NAME=
     # (empty) to inherit LLM_MODEL_NAME.
     # Wonderwall is the #1 cost driver — 850+ calls per run. Keep it cheap.
-    WONDERWALL_MODEL_NAME = os.environ.get('WONDERWALL_MODEL_NAME', 'deepseek/deepseek-v4-flash:nitro')
+    WONDERWALL_MODEL_NAME = os.environ.get('WONDERWALL_MODEL_NAME', 'gpt-5.4-nano')
     # Optional per-slot endpoint override — point Wonderwall at a different
     # OpenAI-compatible API (e.g. a self-hosted Modal/vLLM endpoint) without
     # affecting the Default/Smart/NER slots. When unset, the simulation
     # subprocess falls back to LLM_API_KEY / LLM_BASE_URL.
     WONDERWALL_API_KEY = os.environ.get('WONDERWALL_API_KEY', '')
     WONDERWALL_BASE_URL = os.environ.get('WONDERWALL_BASE_URL', '')
+    WONDERWALL_TEMPERATURE = os.environ.get('WONDERWALL_TEMPERATURE', '')
+    SIMULATION_SEED = os.environ.get('SIMULATION_SEED', '')
 
     # NER model — faster model for entity extraction (high-volume, mechanical task)
-    # Defaults to google/gemini-3-flash-preview (stable JSON with reasoning disabled);
+    # Defaults to gpt-5.4-mini for reliable JSON at lower cost;
     # set NER_MODEL_NAME= (empty) to inherit the default LLM config above.
-    NER_MODEL_NAME = os.environ.get('NER_MODEL_NAME', 'google/gemini-3-flash-preview')
+    NER_MODEL_NAME = os.environ.get('NER_MODEL_NAME', 'gpt-5.4-mini')
     NER_BASE_URL = os.environ.get('NER_BASE_URL', '')
     NER_API_KEY = os.environ.get('NER_API_KEY', '')
 
@@ -201,8 +203,10 @@ class Config:
     # 0 = safe default for non-thinking models (no change in behaviour).
     THINKING_BUDGET_TOKENS = int(os.environ.get('THINKING_BUDGET_TOKENS', '0'))
 
-    # Disable chain-of-thought on reasoning-capable OpenRouter models by default.
-    # Passes `reasoning: {enabled: false}` in extra_body — huge latency win
+    # Disable chain-of-thought only on reasoning-capable OpenRouter models.
+    # LLMClient sends `reasoning: {enabled: false}` in extra_body only when
+    # a slot's effective base URL contains "openrouter" — direct OpenAI calls
+    # never receive that provider-specific body parameter. Huge latency win
     # (~3x on Qwen3-Flash, ~3x on Gemini-3-Flash) and zero-op on models that
     # ignore the flag. Set false if a slot benefits from CoT (rare for
     # MiroShark's short, structured prompts).
@@ -306,6 +310,18 @@ class Config:
     ENABLE_SITEMAP = os.environ.get('ENABLE_SITEMAP', 'true').lower() == 'true'
 
     @classmethod
+    def uses_openrouter_chat_base_url(cls):
+        """Return True if any active chat slot targets OpenRouter."""
+        urls = [cls.LLM_BASE_URL]
+        if cls.SMART_MODEL_NAME:
+            urls.append(cls.SMART_BASE_URL or cls.LLM_BASE_URL)
+        if cls.NER_MODEL_NAME:
+            urls.append(cls.NER_BASE_URL or cls.LLM_BASE_URL)
+        if cls.WONDERWALL_MODEL_NAME:
+            urls.append(cls.WONDERWALL_BASE_URL or cls.LLM_BASE_URL)
+        return any('openrouter' in (url or '').lower() for url in urls)
+
+    @classmethod
     def validate(cls):
         """Validate required configuration"""
         errors = []
@@ -315,13 +331,18 @@ class Config:
             errors.append("NEO4J_URI is not configured")
         if not cls.NEO4J_PASSWORD:
             errors.append("NEO4J_PASSWORD is not configured")
-        if cls.THINKING_BUDGET_TOKENS > 0 and cls.LLM_DISABLE_REASONING:
+        if (
+            cls.THINKING_BUDGET_TOKENS > 0
+            and cls.LLM_DISABLE_REASONING
+            and cls.uses_openrouter_chat_base_url()
+        ):
             import warnings
             warnings.warn(
                 "THINKING_BUDGET_TOKENS is set but LLM_DISABLE_REASONING=true (default) "
-                "will suppress <think> blocks via reasoning:{enabled:false} — the extra "
-                "token budget is wasted. Set LLM_DISABLE_REASONING=false to use thinking "
-                "models, or remove THINKING_BUDGET_TOKENS for non-thinking models.",
+                "will suppress <think> blocks via reasoning:{enabled:false} on OpenRouter "
+                "slots — the extra token budget is wasted there. Set "
+                "LLM_DISABLE_REASONING=false to use thinking models, or remove "
+                "THINKING_BUDGET_TOKENS for non-thinking models.",
                 stacklevel=2,
             )
         return errors
