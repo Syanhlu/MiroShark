@@ -42,29 +42,47 @@ class UserInfo:
         return user_info_template.format(**self.profile)
 
     def to_system_message(self) -> str:
-        if self.recsys_type != "reddit":
-            return self.to_twitter_system_message()
-        else:
-            return self.to_reddit_system_message()
+        r"""Legacy, non-localized prompt fallback.
 
-    def to_twitter_system_message(self) -> str:
+        Used only when a ``SocialAgent`` is constructed without a
+        ``simulation=SimulationConfig`` (see ``wonderwall.social_agent.agent``
+        — passing a ``SimulationConfig`` there routes through
+        ``simulation.prompt_builder.build_system_prompt()`` instead, e.g.
+        ``ThreadsPromptBuilder``/``FacebookPromptBuilder`` in
+        ``wonderwall.simulations.social_media.prompts``, which are localized
+        via ``app.prompts.get_prompt()``). This method intentionally no
+        longer hardcodes a specific platform name/voice ("Twitter"/"Reddit")
+        — that distinction now lives entirely in ``BasePromptBuilder``
+        subclasses. Kept generic (rather than removed) because a handful of
+        legacy, currently-uncalled agent-generator helpers in
+        ``agents_generator.py`` (``generate_agents``, ``generate_agents_100w``,
+        ``generate_controllable_agents``, ``gen_control_agents_with_data``,
+        ``generate_reddit_agents``) still build ``SocialAgent`` without a
+        ``simulation=`` kwarg and would otherwise crash if ever invoked.
+        """
         name_string = ""
         description_string = ""
+        description = name_string
         if self.name is not None:
             name_string = f"Your name is {self.name}."
-        if self.profile is None:
             description = name_string
-        elif "other_info" not in self.profile:
-            description = name_string
-        elif "user_profile" in self.profile["other_info"]:
-            if self.profile["other_info"]["user_profile"] is not None:
-                user_profile = self.profile["other_info"]["user_profile"]
+        if self.profile is not None and "other_info" in self.profile:
+            other_info = self.profile["other_info"]
+            if other_info.get("user_profile") is not None:
+                user_profile = other_info["user_profile"]
                 description_string = f"Your have profile: {user_profile}."
                 description = f"{name_string}\n{description_string}"
+                if all(k in other_info for k in
+                       ("gender", "age", "mbti", "country")):
+                    description += (
+                        f"You are a {other_info['gender']}, "
+                        f"{other_info['age']} years old, with an MBTI "
+                        f"personality type of {other_info['mbti']} from "
+                        f"{other_info['country']}.")
 
         system_content = f"""
 # OBJECTIVE
-You're a Twitter user, and I'll present you with some tweets. After you see the tweets, choose some actions from the following functions.
+You're a social media user, and I'll present you with some posts. After you see the posts, choose some actions from the following functions.
 
 # SELF-DESCRIPTION
 Your actions should be consistent with your self-description and personality.
@@ -74,38 +92,4 @@ Your actions should be consistent with your self-description and personality.
 Please perform actions by tool calling.
         """
 
-        return system_content
-
-    def to_reddit_system_message(self) -> str:
-        name_string = ""
-        description_string = ""
-        if self.name is not None:
-            name_string = f"Your name is {self.name}."
-        if self.profile is None:
-            description = name_string
-        elif "other_info" not in self.profile:
-            description = name_string
-        elif "user_profile" in self.profile["other_info"]:
-            if self.profile["other_info"]["user_profile"] is not None:
-                user_profile = self.profile["other_info"]["user_profile"]
-                description_string = f"Your have profile: {user_profile}."
-                description = f"{name_string}\n{description_string}"
-                print(self.profile['other_info'])
-                description += (
-                    f"You are a {self.profile['other_info']['gender']}, "
-                    f"{self.profile['other_info']['age']} years old, with an MBTI "
-                    f"personality type of {self.profile['other_info']['mbti']} from "
-                    f"{self.profile['other_info']['country']}.")
-
-        system_content = f"""
-# OBJECTIVE
-You're a Reddit user, and I'll present you with some posts. After you see the posts, choose some actions from the following functions.
-
-# SELF-DESCRIPTION
-Your actions should be consistent with your self-description and personality.
-{description}
-
-# RESPONSE METHOD
-Please perform actions by tool calling.
-"""
         return system_content

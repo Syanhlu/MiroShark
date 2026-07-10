@@ -1,5 +1,5 @@
 """
-Wonderwall Reddit simulation preset script
+Wonderwall Threads simulation preset script
 This script reads parameters from a configuration file to run the simulation, fully automated
 
 Features:
@@ -9,8 +9,8 @@ Features:
 - Supports remote environment shutdown command
 
 Usage:
-    python run_reddit_simulation.py --config /path/to/simulation_config.json
-    python run_reddit_simulation.py --config /path/to/simulation_config.json --no-wait  # Close immediately after completion
+    python run_threads_simulation.py --config /path/to/simulation_config.json
+    python run_threads_simulation.py --config /path/to/simulation_config.json --no-wait  # Close immediately after completion
 """
 
 import argparse
@@ -26,16 +26,6 @@ import sys
 import sqlite3
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-
-from wonderwall.social_agent.belief_state import (
-    BeliefState,
-    extract_topics_from_requirement,
-    inject_belief_context,
-)
-from wonderwall.social_agent.round_analyzer import (
-    RoundAnalyzer,
-    SimulationTrajectory,
-)
 
 # Global variables: used for signal handling
 _shutdown_event = None
@@ -106,8 +96,8 @@ def _apply_simulation_seed(seed: int, label: str, announce: bool = False) -> Non
 _BASE_SIMULATION_SEED = _parse_simulation_seed()
 if _BASE_SIMULATION_SEED is not None:
     _apply_simulation_seed(
-        _derive_simulation_seed(_BASE_SIMULATION_SEED, "reddit"),
-        "reddit",
+        _derive_simulation_seed(_BASE_SIMULATION_SEED, "twitter"),
+        "twitter",
         announce=True,
     )
 
@@ -134,7 +124,7 @@ class UnicodeFormatter(logging.Formatter):
 
 class MaxTokensWarningFilter(logging.Filter):
     """Filter out camel-ai warnings about max_tokens (we intentionally don't set max_tokens, letting the model decide)"""
-
+    
     def filter(self, record):
         # Filter out log entries containing max_tokens warnings
         if "max_tokens" in record.getMessage() and "Invalid or missing" in record.getMessage():
@@ -158,12 +148,18 @@ def setup_wonderwall_logging(log_dir: str):
                 os.remove(old_log)
             except OSError:
                 pass
-
+    
     formatter = UnicodeFormatter("%(levelname)s - %(asctime)s - %(name)s - %(message)s")
     
     loggers_config = {
         "social.agent": os.path.join(log_dir, "social.agent.log"),
-        "social.twitter": os.path.join(log_dir, "social.twitter.log"),
+        # Logger name "social.twitter" is NOT renamed: it's the actual name
+        # wonderwall/social_platform/platform.py's Platform class logs under
+        # (`twitter_log = logging.getLogger(name="social.twitter")`), shared
+        # by every preset (Threads/Facebook/TikTok all use the same Platform
+        # class) and out of scope for this rename. The output filename is
+        # renamed for readability since it's just this script's own choice.
+        "social.twitter": os.path.join(log_dir, "social.threads.log"),
         "social.rec": os.path.join(log_dir, "social.rec.log"),
         "wonderwall.env": os.path.join(log_dir, "wonderwall.env.log"),
         "table": os.path.join(log_dir, "table.log"),
@@ -188,8 +184,9 @@ try:
         ActionType,
         LLMAction,
         ManualAction,
-        generate_reddit_agent_graph
+        generate_threads_agent_graph
     )
+    from wonderwall.simulations.social_media import threads_simulation
 except ImportError as e:
     print(f"Error: Missing dependency {e}")
     print("Please install first: pip install camel-ai")
@@ -221,7 +218,7 @@ class IPCHandler:
         # Ensure directories exist
         os.makedirs(self.commands_dir, exist_ok=True)
         os.makedirs(self.responses_dir, exist_ok=True)
-
+    
     def update_status(self, status: str):
         """Update environment status"""
         with open(self.status_file, 'w', encoding='utf-8') as f:
@@ -273,7 +270,7 @@ class IPCHandler:
             os.remove(command_file)
         except OSError:
             pass
-    
+
     async def handle_interview(self, command_id: str, agent_id: int, prompt: str) -> bool:
         """
         Handle a single Agent interview command
@@ -301,7 +298,7 @@ class IPCHandler:
             self.send_response(command_id, "completed", result=result)
             print(f"  Interview completed: agent_id={agent_id}")
             return True
-
+            
         except Exception as e:
             error_msg = str(e)
             print(f"  Interview failed: agent_id={agent_id}, error={error_msg}")
@@ -337,7 +334,7 @@ class IPCHandler:
             if not actions:
                 self.send_response(command_id, "failed", error="No valid Agents")
                 return False
-            
+
             # Execute batch Interview
             await self.env.step(actions)
             
@@ -353,7 +350,7 @@ class IPCHandler:
             })
             print(f"  Batch Interview completed: {len(results)} Agents")
             return True
-
+            
         except Exception as e:
             error_msg = str(e)
             print(f"  Batch Interview failed: {error_msg}")
@@ -362,7 +359,7 @@ class IPCHandler:
     
     def _get_interview_result(self, agent_id: int) -> Dict[str, Any]:
         """Get the latest Interview result from the database"""
-        db_path = os.path.join(self.simulation_dir, "reddit_simulation.db")
+        db_path = os.path.join(self.simulation_dir, "threads_simulation.db")
         
         result = {
             "agent_id": agent_id,
@@ -445,33 +442,22 @@ class IPCHandler:
             return True
 
 
-class RedditSimulationRunner:
-    """Reddit simulation runner"""
+class ThreadsSimulationRunner:
+    """Threads simulation runner"""
 
-    # Available Reddit actions (excluding INTERVIEW, which can only be triggered manually via ManualAction)
-    AVAILABLE_ACTIONS = [
-        ActionType.LIKE_POST,
-        ActionType.DISLIKE_POST,
-        ActionType.CREATE_POST,
-        ActionType.CREATE_COMMENT,
-        ActionType.LIKE_COMMENT,
-        ActionType.DISLIKE_COMMENT,
-        ActionType.SEARCH_POSTS,
-        ActionType.SEARCH_USER,
-        ActionType.TREND,
-        ActionType.REFRESH,
-        ActionType.DO_NOTHING,
-        ActionType.FOLLOW,
-        ActionType.MUTE,
-    ]
+    # Available Threads actions (excluding INTERVIEW, which can only be
+    # triggered manually via ManualAction). Sourced from
+    # ActionType.get_default_threads_actions() so this stays in sync with
+    # wonderwall.simulations.social_media.threads_simulation.default_actions.
+    AVAILABLE_ACTIONS = ActionType.get_default_threads_actions()
     
     def __init__(self, config_path: str, wait_for_commands: bool = True):
         """
-        Initialize the simulation runner
+        Initialize simulation runner
 
         Args:
             config_path: Configuration file path (simulation_config.json)
-            wait_for_commands: Whether to wait for commands after simulation (default True)
+            wait_for_commands: Whether to wait for commands after simulation completes (default True)
         """
         self.config_path = config_path
         self.config = self._load_config()
@@ -480,11 +466,6 @@ class RedditSimulationRunner:
         self.env = None
         self.agent_graph = None
         self.ipc_handler = None
-        # Belief tracking
-        self.belief_states: Dict[int, BeliefState] = {}
-        self.topics: List[str] = []
-        self.round_analyzer: Optional[RoundAnalyzer] = None
-        self.trajectory: Optional[SimulationTrajectory] = None
         
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration file"""
@@ -492,12 +473,12 @@ class RedditSimulationRunner:
             return json.load(f)
     
     def _get_profile_path(self) -> str:
-        """Get Profile file path"""
-        return os.path.join(self.simulation_dir, "reddit_profiles.json")
+        """Get Profile file path (Wonderwall Threads uses CSV format)"""
+        return os.path.join(self.simulation_dir, "threads_profiles.csv")
     
     def _get_db_path(self) -> str:
         """Get database path"""
-        return os.path.join(self.simulation_dir, "reddit_simulation.db")
+        return os.path.join(self.simulation_dir, "threads_simulation.db")
     
     def _create_model(self):
         """
@@ -561,7 +542,7 @@ class RedditSimulationRunner:
                 'User-Agent': f'MiroShark/1.0 (Wonderwall-Simulation; model={llm_model})',
             },
         )
-
+    
     def _get_active_agents_for_round(
         self, 
         env, 
@@ -570,13 +551,23 @@ class RedditSimulationRunner:
     ) -> List:
         """
         Determine which Agents to activate this round based on time and configuration
+
+        Args:
+            env: Wonderwall environment
+            current_hour: Current simulated hour (0-23)
+            round_num: Current round number
+
+        Returns:
+            List of activated Agents
         """
         time_config = self.config.get("time_config", {})
         agent_configs = self.config.get("agent_configs", [])
         
+        # Base activation count
         base_min = time_config.get("agents_per_hour_min", 5)
         base_max = time_config.get("agents_per_hour_max", 20)
         
+        # Adjust by time period
         peak_hours = time_config.get("peak_hours", [9, 10, 11, 14, 15, 20, 21, 22])
         off_peak_hours = time_config.get("off_peak_hours", [0, 1, 2, 3, 4, 5])
         
@@ -589,23 +580,28 @@ class RedditSimulationRunner:
         
         target_count = int(random.uniform(base_min, base_max) * multiplier)
         
+        # Calculate activation probability based on each Agent's configuration
         candidates = []
         for cfg in agent_configs:
             agent_id = cfg.get("agent_id", 0)
             active_hours = cfg.get("active_hours", list(range(8, 23)))
             activity_level = cfg.get("activity_level", 0.5)
             
+            # Check if within active hours
             if current_hour not in active_hours:
                 continue
             
+            # Calculate probability based on activity level
             if random.random() < activity_level:
                 candidates.append(agent_id)
         
+        # Random selection
         selected_ids = random.sample(
             candidates, 
             min(target_count, len(candidates))
         ) if candidates else []
         
+        # Convert to Agent objects
         active_agents = []
         for agent_id in selected_ids:
             try:
@@ -615,72 +611,26 @@ class RedditSimulationRunner:
                 pass
         
         return active_agents
-
-    def _init_belief_system(self):
-        """Initialize belief states for all agents from simulation config."""
-        simulation_req = self.config.get("simulation_requirement", "")
-        self.topics = extract_topics_from_requirement(simulation_req)
-        print(f"  Belief tracking topics: {self.topics}")
-
-        self.round_analyzer = RoundAnalyzer(self.topics)
-        self.trajectory = SimulationTrajectory()
-        self.trajectory.topics = self.topics
-
-        agent_configs = self.config.get("agent_configs", [])
-        for cfg in agent_configs:
-            agent_id = cfg.get("agent_id", 0)
-            self.belief_states[agent_id] = BeliefState.from_profile(cfg, self.topics)
-
-        print(f"  Initialized belief states for {len(self.belief_states)} agents")
-
-    def _run_round_analysis(self, db_path: str, active_agent_ids: List[int], round_num: int):
-        """Run belief updates and round analysis after each round."""
-        if not self.round_analyzer:
-            return
-
-        snapshot = self.round_analyzer.analyze_round(
-            db_path=db_path,
-            belief_states=self.belief_states,
-            active_agent_ids=active_agent_ids,
-            round_num=round_num,
-        )
-        self.trajectory.add_snapshot(snapshot)
-
-        # Inject updated belief context into each active agent's system message
-        for agent_id in active_agent_ids:
-            bs = self.belief_states.get(agent_id)
-            if not bs:
-                continue
-            try:
-                agent = self.env.agent_graph.get_agent(agent_id)
-                belief_text = bs.to_prompt_text()
-                feedback = self.round_analyzer.generate_agent_feedback(
-                    snapshot, agent_id, bs
-                )
-                combined = belief_text
-                if feedback:
-                    combined += "\n\n" + feedback
-                if combined.strip():
-                    inject_belief_context(agent, combined)
-            except Exception:
-                pass
-
+    
     async def run(self, max_rounds: int = None):
-        """Run Reddit simulation
+        """Run Threads simulation
 
         Args:
             max_rounds: Maximum simulation rounds (optional, used to truncate long simulations)
         """
         print("=" * 60)
-        print("Wonderwall Reddit Simulation")
+        print("Wonderwall Threads Simulation")
         print(f"Config file: {self.config_path}")
         print(f"Simulation ID: {self.config.get('simulation_id', 'unknown')}")
         print(f"Command waiting mode: {'enabled' if self.wait_for_commands else 'disabled'}")
         print("=" * 60)
         
+        # Load time configuration
         time_config = self.config.get("time_config", {})
         total_hours = time_config.get("total_simulation_hours", 72)
         minutes_per_round = time_config.get("minutes_per_round", 30)
+        
+        # Calculate total rounds
         total_rounds = (total_hours * 60) // minutes_per_round
         
         # If max rounds specified, truncate
@@ -698,40 +648,41 @@ class RedditSimulationRunner:
             print(f"  - Max rounds limit: {max_rounds}")
         print(f"  - Number of Agents: {len(self.config.get('agent_configs', []))}")
 
+        # Create model
         print("\nInitializing LLM model...")
         model = self._create_model()
         
+        # Load Agent graph
         print("Loading Agent Profile...")
         profile_path = self._get_profile_path()
         if not os.path.exists(profile_path):
             print(f"Error: Profile file not found: {profile_path}")
             return
         
-        self.agent_graph = await generate_reddit_agent_graph(
+        self.agent_graph = await generate_threads_agent_graph(
             profile_path=profile_path,
             model=model,
             available_actions=self.AVAILABLE_ACTIONS,
+            simulation=threads_simulation,
         )
-        
+
+        # Database path
         db_path = self._get_db_path()
         if os.path.exists(db_path):
             os.remove(db_path)
             print(f"Deleted old database: {db_path}")
-        
+
+        # Create environment
         print("Creating Wonderwall environment...")
         self.env = wonderwall.make(
             agent_graph=self.agent_graph,
-            platform=wonderwall.DefaultPlatformType.REDDIT,
+            simulation=threads_simulation,
             database_path=db_path,
-            semaphore=60,  # Concurrent LLM requests (increase for faster APIs)
+            semaphore=30,  # Limit maximum concurrent LLM requests to prevent API overload
         )
         
         await self.env.reset()
         print("Environment initialization complete\n")
-
-        # Initialize belief tracking system
-        print("Initializing belief tracking system...")
-        self._init_belief_system()
 
         # Initialize IPC handler
         self.ipc_handler = IPCHandler(self.simulation_dir, self.env, self.agent_graph)
@@ -749,25 +700,17 @@ class RedditSimulationRunner:
                 content = post.get("content", "")
                 try:
                     agent = self.env.agent_graph.get_agent(agent_id)
-                    if agent in initial_actions:
-                        if not isinstance(initial_actions[agent], list):
-                            initial_actions[agent] = [initial_actions[agent]]
-                        initial_actions[agent].append(ManualAction(
-                            action_type=ActionType.CREATE_POST,
-                            action_args={"content": content}
-                        ))
-                    else:
-                        initial_actions[agent] = ManualAction(
-                            action_type=ActionType.CREATE_POST,
-                            action_args={"content": content}
-                        )
+                    initial_actions[agent] = ManualAction(
+                        action_type=ActionType.CREATE_POST,
+                        action_args={"content": content}
+                    )
                 except Exception as e:
                     print(f"  Warning: Unable to create initial post for Agent {agent_id}: {e}")
             
             if initial_actions:
                 await self.env.step(initial_actions)
                 print(f"  Published {len(initial_actions)} initial posts")
-        
+
         # Main simulation loop
         print("\nStarting simulation loop...")
         start_time = datetime.now()
@@ -776,10 +719,12 @@ class RedditSimulationRunner:
             # Surface round number to subprocess LLM calls for Langfuse metadata
             os.environ['MIROSHARK_ROUND_NUM'] = str(round_num + 1)
 
+            # Calculate current simulated time
             simulated_minutes = round_num * minutes_per_round
             simulated_hour = (simulated_minutes // 60) % 24
             simulated_day = simulated_minutes // (60 * 24) + 1
-
+            
+            # Get active Agents for this round
             active_agents = self._get_active_agents_for_round(
                 self.env, simulated_hour, round_num
             )
@@ -787,17 +732,16 @@ class RedditSimulationRunner:
             if not active_agents:
                 continue
             
+            # Build actions
             actions = {
                 agent: LLMAction()
                 for _, agent in active_agents
             }
             
+            # Execute actions
             await self.env.step(actions)
-
-            # Run belief updates and round analysis
-            active_ids = [aid for aid, _ in active_agents]
-            self._run_round_analysis(db_path, active_ids, round_num)
-
+            
+            # Print progress
             if (round_num + 1) % 10 == 0 or round_num == 0:
                 elapsed = (datetime.now() - start_time).total_seconds()
                 progress = (round_num + 1) / total_rounds * 100
@@ -811,13 +755,6 @@ class RedditSimulationRunner:
         print(f"  - Total elapsed: {total_elapsed:.1f}s")
         print(f"  - Database: {db_path}")
 
-        # Save belief trajectory for report agent
-        if self.trajectory:
-            trajectory_path = os.path.join(self.simulation_dir, "trajectory.json")
-            self.trajectory.save(trajectory_path)
-            print(f"  - Belief trajectory: {trajectory_path}")
-            print(f"  - Convergence: {json.dumps(self.trajectory._compute_convergence(), indent=2)}")
-        
         # Whether to enter command waiting mode
         if self.wait_for_commands:
             print("\n" + "=" * 60)
@@ -846,7 +783,7 @@ class RedditSimulationRunner:
                 print(f"\nCommand processing error: {e}")
 
             print("\nShutting down environment...")
-        
+
         # Close environment
         self.ipc_handler.update_status("stopped")
         await self.env.close()
@@ -856,10 +793,10 @@ class RedditSimulationRunner:
 
 
 async def main():
-    parser = argparse.ArgumentParser(description='Wonderwall Reddit Simulation')
+    parser = argparse.ArgumentParser(description='Wonderwall Threads Simulation')
     parser.add_argument(
-        '--config', 
-        type=str, 
+        '--config',
+        type=str,
         required=True,
         help='Configuration file path (simulation_config.json)'
     )
@@ -875,22 +812,22 @@ async def main():
         default=False,
         help='Close environment immediately after simulation, do not enter command waiting mode'
     )
-    
+
     args = parser.parse_args()
-    
+
     # Create shutdown event at the start of main
     global _shutdown_event
     _shutdown_event = asyncio.Event()
-    
+
     if not os.path.exists(args.config):
         print(f"Error: Configuration file not found: {args.config}")
         sys.exit(1)
-    
-    # Initialize logging configuration (fixed filenames, clean up old logs)
+
+    # Initialize logging configuration (use fixed filenames, clean up old logs)
     simulation_dir = os.path.dirname(args.config) or "."
     setup_wonderwall_logging(os.path.join(simulation_dir, "log"))
-    
-    runner = RedditSimulationRunner(
+
+    runner = ThreadsSimulationRunner(
         config_path=args.config,
         wait_for_commands=not args.no_wait
     )
@@ -911,10 +848,10 @@ def setup_signal_handlers():
             if _shutdown_event:
                 _shutdown_event.set()
         else:
-            # Only force exit on repeated signals
+            # Force exit only on repeated signals
             print("Force exiting...")
             sys.exit(1)
-    
+
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -929,4 +866,3 @@ if __name__ == "__main__":
         pass
     finally:
         print("Simulation process exited")
-

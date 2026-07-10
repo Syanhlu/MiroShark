@@ -111,18 +111,18 @@ def test_vietnam_country_pack_schema():
     ]
     assert vn["dataset"]["download_dir"] == "backend/data/nemotron/vietnam"
     assert vn["dataset"]["allow_patterns"] == ["data/train-*", "README.md"]
-    assert vn["dataset"]["country_values"] == ["Việt Nam", "vietnam", "vn"]
+    assert vn["dataset"]["country_values"] == ["Việt Nam", "vietnam", "viet nam", "vn"]
 
     geo = vn["geography"]
     assert geo["field"] == "region"
-    assert geo["label"] == "Region"
+    assert geo["label"] == "Province/City"
     assert geo["values"] == [
-        "Thành Phố Hồ Chí Minh",
         "Thủ Đô Hà Nội",
-        "Tỉnh Đồng Nai",
-        "Thành Phố Đà Nẵng",
-        "Thành Phố Cần Thơ",
         "Thành Phố Hải Phòng",
+        "Thành Phố Đà Nẵng",
+        "Thành Phố Hồ Chí Minh",
+        "Tỉnh Đồng Nai",
+        "Thành Phố Cần Thơ",
     ]
     assert geo["groups"] == {
         "north": ["Thủ Đô Hà Nội", "Thành Phố Hải Phòng"],
@@ -320,8 +320,8 @@ def test_sample_seeds_applies_country_values_with_vietnamese_diacritics():
     assert rows[0]["_geography_field"] == "region"
     assert rows[0]["_geography_value"] == "Thủ Đô Hà Nội"
     query = conn.queries[-1]
-    assert 'CAST("country" AS VARCHAR) IN (\'Việt Nam\', \'vietnam\', \'vn\')' in query
-    assert 'lower(CAST("country" AS VARCHAR)) IN (\'việt nam\', \'vietnam\', \'vn\')' in query
+    assert 'CAST("country" AS VARCHAR) IN (\'Việt Nam\', \'vietnam\', \'viet nam\', \'vn\')' in query
+    assert 'lower(CAST("country" AS VARCHAR)) IN (\'việt nam\', \'vietnam\', \'viet nam\', \'vn\')' in query
 
 
 def test_sample_seeds_skips_missing_industry_column():

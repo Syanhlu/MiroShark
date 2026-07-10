@@ -279,9 +279,10 @@ const handleEnterEnvSetup = async () => {
     const res = await createSimulation({
       project_id: props.projectData.project_id,
       graph_id: props.projectData.graph_id,
-      enable_twitter: true,
-      enable_reddit: true,
+      enable_threads: true,
+      enable_facebook: true,
       enable_polymarket: true,
+      enable_tiktok: false,
       polymarket_market_count: marketCount.value,
       ...(demographic.value.country ? { country: demographic.value.country } : {}),
       ...(demographic.value.demographic_filters

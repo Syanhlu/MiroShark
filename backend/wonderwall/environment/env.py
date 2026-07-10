@@ -25,8 +25,7 @@ from wonderwall.social_agent.agent_graph import AgentGraph
 from wonderwall.social_agent.agents_generator import generate_custom_agents
 from wonderwall.social_platform.channel import Channel
 from wonderwall.social_platform.platform import Platform
-from wonderwall.social_platform.typing import (ActionType, DefaultPlatformType,
-                                          RecsysType)
+from wonderwall.social_platform.typing import ActionType, DefaultPlatformType
 
 # Create log directory if it doesn't exist
 log_dir = "./log"
@@ -73,10 +72,12 @@ class WonderwallEnv:
 
         Args:
             agent_graph: The AgentGraph to use in the simulation.
-            platform: The platform type to use. Including
-                ``DefaultPlatformType.TWITTER`` or
-                ``DefaultPlatformType.REDDIT``, a custom ``Platform``
-                instance, or any ``BasePlatform`` subclass instance.
+            platform: A custom ``Platform`` instance, or any
+                ``BasePlatform`` subclass instance. ``DefaultPlatformType``
+                members are no longer constructible directly here — use the
+                ``simulation=`` parameter with a ``SimulationConfig``
+                instead (see ``wonderwall.simulations.social_media`` for the
+                Threads/Facebook/TikTok presets).
             database_path: The path to create a sqlite3 database.
             semaphore: Max concurrent LLM requests.
             simulation: A ``SimulationConfig`` that will be used to create
@@ -125,40 +126,16 @@ class WonderwallEnv:
             return
 
         # ------------------------------------------------------------------
-        # Legacy path: DefaultPlatformType enum
+        # Legacy DefaultPlatformType enum is no longer constructible here.
         # ------------------------------------------------------------------
         if isinstance(platform, DefaultPlatformType):
-            if database_path is None:
-                raise ValueError(
-                    "database_path is required for DefaultPlatformType")
-            self.platform = platform
-            if platform == DefaultPlatformType.TWITTER:
-                self.channel = Channel()
-                self.platform = Platform(
-                    db_path=database_path,
-                    channel=self.channel,
-                    recsys_type="twhin-bert",
-                    refresh_rec_post_count=2,
-                    max_rec_post_len=2,
-                    following_post_count=3,
-                )
-                self.platform_type = DefaultPlatformType.TWITTER
-            elif platform == DefaultPlatformType.REDDIT:
-                self.channel = Channel()
-                self.platform = Platform(
-                    db_path=database_path,
-                    channel=self.channel,
-                    recsys_type="reddit",
-                    allow_self_rating=True,
-                    show_score=True,
-                    max_rec_post_len=100,
-                    refresh_rec_post_count=5,
-                )
-                self.platform_type = DefaultPlatformType.REDDIT
-            else:
-                raise ValueError(f"Invalid platform: {platform}. Only "
-                                 "DefaultPlatformType.TWITTER or "
-                                 "DefaultPlatformType.REDDIT are supported.")
+            raise ValueError(
+                f"DefaultPlatformType.{platform.name} can no longer be "
+                "passed directly via platform=. Use the simulation= "
+                "parameter with a SimulationConfig instead, e.g. "
+                "wonderwall.make(simulation=threads_simulation, ...) — see "
+                "wonderwall.simulations.social_media for the available "
+                "presets.")
 
         # ------------------------------------------------------------------
         # Legacy path: custom Platform instance
@@ -169,16 +146,12 @@ class WonderwallEnv:
                                 "platform.db_path, using the platform.db_path")
             self.platform = platform
             self.channel = platform.channel
-            if platform.recsys_type == RecsysType.REDDIT:
-                self.platform_type = DefaultPlatformType.REDDIT
-            else:
-                self.platform_type = DefaultPlatformType.TWITTER
+            self.platform_type = None  # Generic — no legacy type
         else:
             raise ValueError(
                 f"Invalid platform: {platform}. You should pass a "
-                "DefaultPlatformType, a Platform instance, a BasePlatform "
-                "subclass, or use the simulation= parameter with a "
-                "SimulationConfig.")
+                "Platform instance, a BasePlatform subclass, or use the "
+                "simulation= parameter with a SimulationConfig.")
 
     async def reset(self) -> None:
         r"""Start the platform and sign up the agents."""
@@ -261,14 +234,17 @@ class WonderwallEnv:
         await asyncio.gather(*tasks)
         env_log.info("performed all actions.")
 
-        # Update the clock for time-step-based simulations
-        if (self.platform_type == DefaultPlatformType.TWITTER
-                if self.platform_type is not None else False):
-            self.platform.sandbox_clock.time_step += 1
-        elif self.platform_type is None and hasattr(self.platform,
-                                                     'tick_clock'):
-            # Generic simulations can implement tick_clock()
+        # Update the clock for time-step-based simulations. Prefer a
+        # simulation-specific tick_clock() (e.g. PolymarketPlatform); fall
+        # back to bumping sandbox_clock.time_step directly for the shared
+        # legacy Platform class (used by the Threads/Facebook/TikTok
+        # SimulationConfig presets), since Platform itself doesn't define
+        # tick_clock(). This runs unconditionally, independent of
+        # platform_type — every platform preset needs its clock ticked.
+        if hasattr(self.platform, 'tick_clock'):
             self.platform.tick_clock()
+        elif hasattr(self.platform, 'sandbox_clock'):
+            self.platform.sandbox_clock.time_step += 1
 
     async def close(self) -> None:
         r"""Stop the platform and close the environment."""

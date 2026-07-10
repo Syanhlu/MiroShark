@@ -2,7 +2,7 @@ import service, { requestWithRetry } from './index'
 
 /**
  * Create simulation
- * @param {Object} data - { project_id, graph_id?, enable_twitter?, enable_reddit?, enable_polymarket? }
+ * @param {Object} data - { project_id, graph_id?, enable_threads?, enable_facebook?, enable_polymarket?, enable_tiktok? }
  */
 export const createSimulation = (data) => {
   return requestWithRetry(() => service.post('/api/simulation/create', data), 3, 1000)
@@ -35,18 +35,18 @@ export const getSimulation = (simulationId) => {
 /**
  * Get simulation Agent Profiles
  * @param {string} simulationId
- * @param {string} platform - 'reddit' | 'twitter'
+ * @param {string} platform - 'facebook' | 'threads'
  */
-export const getSimulationProfiles = (simulationId, platform = 'reddit') => {
+export const getSimulationProfiles = (simulationId, platform = 'facebook') => {
   return service.get(`/api/simulation/${simulationId}/profiles`, { params: { platform } })
 }
 
 /**
  * Get Agent Profiles being generated in real-time
  * @param {string} simulationId
- * @param {string} platform - 'reddit' | 'twitter'
+ * @param {string} platform - 'facebook' | 'threads'
  */
-export const getSimulationProfilesRealtime = (simulationId, platform = 'reddit') => {
+export const getSimulationProfilesRealtime = (simulationId, platform = 'facebook') => {
   return service.get(`/api/simulation/${simulationId}/profiles/realtime`, { params: { platform } })
 }
 
@@ -140,11 +140,11 @@ export const compareSimulations = (id1, id2) => {
 /**
  * Get posts in simulation
  * @param {string} simulationId
- * @param {string} platform - 'reddit' | 'twitter'
+ * @param {string} platform - 'facebook' | 'threads'
  * @param {number} limit - Number of results to return
  * @param {number} offset - Offset
  */
-export const getSimulationPosts = (simulationId, platform = 'reddit', limit = 50, offset = 0) => {
+export const getSimulationPosts = (simulationId, platform = 'facebook', limit = 50, offset = 0) => {
   return service.get(`/api/simulation/${simulationId}/posts`, {
     params: { platform, limit, offset }
   })

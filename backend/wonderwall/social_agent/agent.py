@@ -326,6 +326,7 @@ class SocialAgent(ChatAgent):
             locale=locale,
             de="WICHTIG: Führe alle Aktionen auf Deutsch durch und schreibe alle Inhalte ausschließlich auf Deutsch.",
             fr="IMPORTANT : Effectue toutes les actions en français et écris tous les contenus uniquement en français.",
+            vi="QUAN TRỌNG: Thực hiện mọi hành động bằng tiếng Việt và viết toàn bộ nội dung hoàn toàn bằng tiếng Việt.",
         )
         lang_suffix = f"\n\n{lang_reminder}"
         user_msg = BaseMessage.make_user_message(

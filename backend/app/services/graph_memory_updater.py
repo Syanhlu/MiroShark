@@ -16,7 +16,7 @@ logger = get_logger('miroshark.graph_memory_updater')
 @dataclass
 class AgentActivity:
     """Agent activity record"""
-    platform: str           # twitter / reddit
+    platform: str           # threads / facebook
     agent_id: int
     agent_name: str
     action_type: str        # CREATE_POST, LIKE_POST, etc.
@@ -177,8 +177,8 @@ class GraphMemoryUpdater:
     BATCH_SIZE = 5
 
     PLATFORM_DISPLAY_NAMES = {
-        'twitter': 'worldinterface1',
-        'reddit': 'worldinterface2',
+        'threads': 'worldinterface1',
+        'facebook': 'worldinterface2',
     }
 
     SEND_INTERVAL = 0.5
@@ -199,8 +199,8 @@ class GraphMemoryUpdater:
         self._activity_queue: Queue = Queue()
 
         self._platform_buffers: Dict[str, List[AgentActivity]] = {
-            'twitter': [],
-            'reddit': [],
+            'threads': [],
+            'facebook': [],
         }
         self._buffer_lock = threading.Lock()
 

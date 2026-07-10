@@ -369,7 +369,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_frame = sub.add_parser("frame", help="Compact snapshot for one round.")
     p_frame.add_argument("simulation_id")
     p_frame.add_argument("round", type=int)
-    p_frame.add_argument("--platforms", help="comma-separated: twitter,reddit,polymarket")
+    p_frame.add_argument("--platforms", help="comma-separated: threads,facebook,polymarket")
     p_frame.set_defaults(func=cmd_frame)
 
     p_pub = sub.add_parser("publish", help="Toggle public embed for a simulation.")

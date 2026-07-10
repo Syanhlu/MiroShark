@@ -50,8 +50,8 @@ def _write_state(sim_dir: Path, **overrides) -> dict:
         "simulation_id": sim_dir.name,
         "project_id": "proj_test123",
         "graph_id": "miroshark_graph_test",
-        "enable_twitter": True,
-        "enable_reddit": True,
+        "enable_threads": True,
+        "enable_facebook": True,
         "enable_polymarket": False,
         "polymarket_market_count": 1,
         "status": "completed",
@@ -129,9 +129,10 @@ def test_happy_path_payload_shape(tmp_path: Path):
     body = payload["clone_payload"]
     assert body["project_id"] == "proj_happy"
     assert body["graph_id"] == "miroshark_happy"
-    assert body["enable_twitter"] is True
-    assert body["enable_reddit"] is True
+    assert body["enable_threads"] is True
+    assert body["enable_facebook"] is True
     assert body["enable_polymarket"] is False
+    assert body["enable_tiktok"] is False
     assert body["polymarket_market_count"] == 1
     assert body["country"] is None
     assert body["demographic_filters"] is None
@@ -179,9 +180,10 @@ def test_polymarket_count_falls_back_to_one_on_garbage(tmp_path: Path):
 
 
 def test_platform_toggles_default_to_manager_defaults(tmp_path: Path):
-    """Manager default-loads are: twitter=True, reddit=True, polymarket=False.
-    An old state.json missing the toggles must still produce a body that
-    matches what /create would have done on a fresh sim."""
+    """Manager default-loads are: threads=True, facebook=True,
+    polymarket=False, tiktok=False. An old state.json missing the toggles
+    must still produce a body that matches what /create would have done
+    on a fresh sim."""
     sim_dir = tmp_path / "sim_legacy"
     sim_dir.mkdir()
     (sim_dir / "state.json").write_text(
@@ -194,9 +196,20 @@ def test_platform_toggles_default_to_manager_defaults(tmp_path: Path):
     )
     payload = clone_service.build_clone_payload("sim_legacy", str(sim_dir))
     body = payload["clone_payload"]
-    assert body["enable_twitter"] is True
-    assert body["enable_reddit"] is True
+    assert body["enable_threads"] is True
+    assert body["enable_facebook"] is True
     assert body["enable_polymarket"] is False
+    assert body["enable_tiktok"] is False
+
+
+def test_tiktok_toggle_passes_through(tmp_path: Path):
+    """Unlike Threads/Facebook, TikTok defaults False — an explicit True
+    in state.json must survive into the clone payload."""
+    sim_dir = tmp_path / "sim_tiktok"
+    sim_dir.mkdir()
+    _write_state(sim_dir, enable_tiktok=True)
+    payload = clone_service.build_clone_payload("sim_tiktok", str(sim_dir))
+    assert payload["clone_payload"]["enable_tiktok"] is True
 
 
 # ── country / demographic_filters normalisation ─────────────────────────
@@ -347,8 +360,8 @@ def test_build_example_curl_is_deterministic():
     body = {
         "project_id": "p",
         "graph_id": "g",
-        "enable_twitter": True,
-        "enable_reddit": True,
+        "enable_threads": True,
+        "enable_facebook": True,
         "enable_polymarket": False,
         "polymarket_market_count": 1,
         "country": None,

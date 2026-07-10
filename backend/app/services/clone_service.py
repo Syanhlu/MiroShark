@@ -22,9 +22,10 @@ This module fills that gap with one stdlib derivation:
     "clone_payload": {            # ← exact POST /api/simulation/create body
       "project_id":             "proj_xyz",
       "graph_id":               "miroshark_def",
-      "enable_twitter":         true,
-      "enable_reddit":          true,
+      "enable_threads":         true,
+      "enable_facebook":        true,
       "enable_polymarket":      false,
+      "enable_tiktok":          false,
       "polymarket_market_count": 1,
       "country":                null,
       "demographic_filters":    null
@@ -215,9 +216,10 @@ def build_clone_payload(
     project_id = _safe_str(state.get("project_id"))
     graph_id = _safe_str(state.get("graph_id"))
 
-    enable_twitter = _safe_bool(state.get("enable_twitter"), default=True)
-    enable_reddit = _safe_bool(state.get("enable_reddit"), default=True)
+    enable_threads = _safe_bool(state.get("enable_threads"), default=True)
+    enable_facebook = _safe_bool(state.get("enable_facebook"), default=True)
     enable_polymarket = _safe_bool(state.get("enable_polymarket"), default=False)
+    enable_tiktok = _safe_bool(state.get("enable_tiktok"), default=False)
     polymarket_market_count = max(
         1, min(5, _safe_int(state.get("polymarket_market_count", 1), 1))
     )
@@ -238,9 +240,10 @@ def build_clone_payload(
     clone_payload: Dict[str, Any] = {
         "project_id": project_id,
         "graph_id": graph_id,
-        "enable_twitter": enable_twitter,
-        "enable_reddit": enable_reddit,
+        "enable_threads": enable_threads,
+        "enable_facebook": enable_facebook,
         "enable_polymarket": enable_polymarket,
+        "enable_tiktok": enable_tiktok,
         "polymarket_market_count": polymarket_market_count,
         "country": country,
         "demographic_filters": demographic_filters,

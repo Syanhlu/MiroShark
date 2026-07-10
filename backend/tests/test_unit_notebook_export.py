@@ -104,8 +104,8 @@ def repro_blob():
         "agent_count": 36,
         "total_rounds": 24,
         "platforms": {
-            "twitter": True,
-            "reddit": True,
+            "threads": True,
+            "facebook": True,
             "polymarket": False,
             "polymarket_market_count": 1,
         },
@@ -196,7 +196,7 @@ def test_header_cell_carries_run_metadata(trajectory_csv, repro_blob):
     assert repro_blob["scenario"] in header
     assert "| Agents | 36 |" in header
     assert "| Rounds | 24 |" in header
-    assert "Twitter" in header and "Reddit" in header
+    assert "Threads" in header and "Facebook" in header
     # reproduce.json link present when base_url is supplied.
     assert "reproduce.json" in header
 
@@ -300,7 +300,7 @@ def test_counterfactual_lineage_surfaces_in_header(trajectory_csv):
         "scenario": "Branch scenario",
         "agent_count": 36,
         "total_rounds": 24,
-        "platforms": {"twitter": True, "reddit": False, "polymarket": False},
+        "platforms": {"threads": True, "facebook": False, "polymarket": False},
         "lineage": {
             "parent_simulation_id": "sim_parent12345",
             "kind": "counterfactual",

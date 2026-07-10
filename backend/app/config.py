@@ -135,6 +135,20 @@ class Config:
         'LIKE_COMMENT', 'DISLIKE_COMMENT', 'SEARCH_POSTS', 'SEARCH_USER',
         'TREND', 'REFRESH', 'DO_NOTHING', 'FOLLOW', 'MUTE'
     ]
+    WONDERWALL_FACEBOOK_ACTIONS = [
+        'CREATE_POST', 'CREATE_COMMENT', 'LIKE_POST', 'LIKE_COMMENT',
+        'REPOST', 'SEARCH_POSTS', 'SEARCH_USER', 'TREND', 'REFRESH',
+        'DO_NOTHING', 'FOLLOW', 'MUTE', 'REPORT_POST'
+    ]
+    WONDERWALL_THREADS_ACTIONS = [
+        'CREATE_POST', 'CREATE_COMMENT', 'LIKE_POST', 'LIKE_COMMENT',
+        'REPOST', 'QUOTE_POST', 'FOLLOW', 'MUTE', 'REPORT_POST',
+        'DO_NOTHING'
+    ]
+    WONDERWALL_TIKTOK_ACTIONS = [
+        'CREATE_POST', 'CREATE_COMMENT', 'LIKE_POST', 'LIKE_COMMENT',
+        'REPOST', 'FOLLOW', 'MUTE', 'REPORT_POST', 'DO_NOTHING'
+    ]
     WONDERWALL_POLYMARKET_ACTIONS = [
         'browse_markets', 'buy_shares', 'sell_shares',
         'view_portfolio', 'create_market', 'comment_on_market', 'do_nothing'

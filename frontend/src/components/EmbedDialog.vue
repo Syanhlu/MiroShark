@@ -1281,9 +1281,10 @@
                 <div class="signal-row">
                   <span class="signal-label">{{ $tr('Platforms', '平台', { de: 'Plattformen', fr: 'Plateformes' }) }}</span>
                   <span class="signal-value">
-                    <span v-if="clonePayload.clone_payload?.enable_twitter">Twitter</span>
-                    <span v-if="clonePayload.clone_payload?.enable_reddit">{{ clonePayload.clone_payload?.enable_twitter ? ' · ' : '' }}Reddit</span>
-                    <span v-if="clonePayload.clone_payload?.enable_polymarket">{{ (clonePayload.clone_payload?.enable_twitter || clonePayload.clone_payload?.enable_reddit) ? ' · ' : '' }}Polymarket ({{ clonePayload.clone_payload?.polymarket_market_count }})</span>
+                    <span v-if="clonePayload.clone_payload?.enable_threads">Threads</span>
+                    <span v-if="clonePayload.clone_payload?.enable_facebook">{{ clonePayload.clone_payload?.enable_threads ? ' · ' : '' }}Facebook</span>
+                    <span v-if="clonePayload.clone_payload?.enable_tiktok">{{ (clonePayload.clone_payload?.enable_threads || clonePayload.clone_payload?.enable_facebook) ? ' · ' : '' }}TikTok</span>
+                    <span v-if="clonePayload.clone_payload?.enable_polymarket">{{ (clonePayload.clone_payload?.enable_threads || clonePayload.clone_payload?.enable_facebook || clonePayload.clone_payload?.enable_tiktok) ? ' · ' : '' }}Polymarket ({{ clonePayload.clone_payload?.polymarket_market_count }})</span>
                   </span>
                 </div>
                 <div class="signal-row" v-if="clonePayload.clone_payload?.country">
@@ -3813,8 +3814,14 @@ const reproPlatformsLabel = computed(() => {
   const p = reproBlob.value?.platforms
   if (!p) return ''
   const parts = []
+<<<<<<< HEAD
   if (p.twitter) parts.push(tr('Twitter', 'Twitter', { de: 'Twitter' , fr: 'Twitter'}))
   if (p.reddit) parts.push(tr('Reddit', 'Reddit', { de: 'Reddit' , fr: 'Reddit'}))
+=======
+  if (p.threads) parts.push(tr('Threads', 'Threads', { de: 'Threads' }))
+  if (p.facebook) parts.push(tr('Facebook', 'Facebook', { de: 'Facebook' }))
+  if (p.tiktok) parts.push(tr('TikTok', 'TikTok', { de: 'TikTok' }))
+>>>>>>> 46b635b (feat: wire up TikTok as an opt-in standalone simulation platform)
   if (p.polymarket) {
     const count = Number(p.polymarket_market_count || 1)
     parts.push(`${tr('Polymarket', 'Polymarket', { de: 'Polymarket' , fr: 'Polymarket'})} ×${count}`)

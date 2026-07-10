@@ -2,11 +2,11 @@ import { ref, computed } from 'vue'
 
 const STORAGE_KEY = 'miroshark.locale'
 const ZH_WARNING_KEY = 'miroshark.zh-warning-seen'
-const SUPPORTED = ['en', 'zh-CN', 'de', 'fr']
+const SUPPORTED = ['en', 'zh-CN', 'de', 'fr', 'vi']
 const DEFAULT_LOCALE = 'en'
 
 // Compact display labels for the language selector (sized for the nav pill).
-const LABELS = { 'en': 'EN', 'zh-CN': '中', 'de': 'DE', 'fr': 'FR' }
+const LABELS = { 'en': 'EN', 'zh-CN': '中', 'de': 'DE', 'fr': 'FR', 'vi': 'VI' }
 
 function readInitial() {
   try {
@@ -21,6 +21,7 @@ export const locale = ref(readInitial())
 export const isZh = computed(() => locale.value === 'zh-CN')
 export const isDe = computed(() => locale.value === 'de')
 export const isFr = computed(() => locale.value === 'fr')
+export const isVi = computed(() => locale.value === 'vi')
 
 export const showZhWarning = ref(false)
 
@@ -81,6 +82,7 @@ export function useI18n() {
     isZh,
     isDe,
     isFr,
+    isVi,
     setLocale,
     tr,
     showZhWarning,
@@ -94,6 +96,7 @@ export const i18nPlugin = {
     app.config.globalProperties.$isZh = () => locale.value === 'zh-CN'
     app.config.globalProperties.$isDe = () => locale.value === 'de'
     app.config.globalProperties.$isFr = () => locale.value === 'fr'
+    app.config.globalProperties.$isVi = () => locale.value === 'vi'
     app.config.globalProperties.$setLocale = setLocale
     app.config.globalProperties.$showZhWarning = showZhWarning
     app.config.globalProperties.$dismissZhWarning = dismissZhWarning

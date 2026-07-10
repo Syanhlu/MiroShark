@@ -4,10 +4,10 @@ Records each Agent's actions during Wonderwall simulation for backend monitoring
 
 Log structure:
     sim_xxx/
-    ├── twitter/
-    │   └── actions.jsonl    # Twitter platform action log
-    ├── reddit/
-    │   └── actions.jsonl    # Reddit platform action log
+    ├── threads/
+    │   └── actions.jsonl    # Threads platform action log
+    ├── facebook/
+    │   └── actions.jsonl    # Facebook platform action log
     ├── simulation.log       # Main simulation process log
     └── run_state.json       # Run state (for API queries)
 """
@@ -28,7 +28,7 @@ class PlatformActionLogger:
         Initialize the logger
 
         Args:
-            platform: Platform name (twitter/reddit)
+            platform: Platform name (threads/facebook)
             base_dir: Base path of the simulation directory
         """
         self.platform = platform
@@ -131,8 +131,8 @@ class SimulationLogManager:
             simulation_dir: Simulation directory path
         """
         self.simulation_dir = simulation_dir
-        self.twitter_logger: Optional[PlatformActionLogger] = None
-        self.reddit_logger: Optional[PlatformActionLogger] = None
+        self.threads_logger: Optional[PlatformActionLogger] = None
+        self.facebook_logger: Optional[PlatformActionLogger] = None
         self.polymarket_logger: Optional[PlatformActionLogger] = None
         self._main_logger: Optional[logging.Logger] = None
         
@@ -167,17 +167,17 @@ class SimulationLogManager:
         
         self._main_logger.propagate = False
     
-    def get_twitter_logger(self) -> PlatformActionLogger:
-        """Get the Twitter platform action logger"""
-        if self.twitter_logger is None:
-            self.twitter_logger = PlatformActionLogger("twitter", self.simulation_dir)
-        return self.twitter_logger
-    
-    def get_reddit_logger(self) -> PlatformActionLogger:
-        """Get the Reddit platform action logger"""
-        if self.reddit_logger is None:
-            self.reddit_logger = PlatformActionLogger("reddit", self.simulation_dir)
-        return self.reddit_logger
+    def get_threads_logger(self) -> PlatformActionLogger:
+        """Get the Threads platform action logger"""
+        if self.threads_logger is None:
+            self.threads_logger = PlatformActionLogger("threads", self.simulation_dir)
+        return self.threads_logger
+
+    def get_facebook_logger(self) -> PlatformActionLogger:
+        """Get the Facebook platform action logger"""
+        if self.facebook_logger is None:
+            self.facebook_logger = PlatformActionLogger("facebook", self.simulation_dir)
+        return self.facebook_logger
 
     def get_polymarket_logger(self) -> PlatformActionLogger:
         """Get the Polymarket platform action logger"""

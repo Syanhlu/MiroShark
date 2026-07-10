@@ -96,20 +96,20 @@ def test_get_prompt_falls_back_to_english_for_unknown_locale():
     (the registry keys on the exact code ``fr``), so it must still fall
     back to English even though ``locales/fr/`` is fully translated.
     """
-    out = get_prompt("social_simulations.twitter_system", "fr-FR",
+    out = get_prompt("social_simulations.threads_system", "fr-FR",
                      description_block="...")
     assert "WHO YOU ARE" in out  # English content
 
 
 def test_get_prompt_returns_french_for_fr():
-    out = get_prompt("social_simulations.twitter_system", "fr",
+    out = get_prompt("social_simulations.threads_system", "fr",
                      description_block="Tu t'appelles Camille.")
     # French header confirms we got the French variant, not the EN fallback.
     assert "QUI TU ES" in out, out[:200]
 
 
 def test_get_prompt_returns_chinese_for_zh_cn():
-    out = get_prompt("social_simulations.twitter_system", "zh-CN",
+    out = get_prompt("social_simulations.threads_system", "zh-CN",
                      description_block="你叫小明。")
     # At least one CJK character must be in the output to confirm we got
     # the Chinese variant rather than the English fallback.

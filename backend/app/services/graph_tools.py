@@ -1271,7 +1271,7 @@ class GraphToolsService:
         # Step 3.5: Determine platform for each agent (single-platform by default)
         if not dual_platform:
             agent_platforms = self._determine_agent_platforms(simulation_id, selected_indices)
-            interview_platform = agent_platforms.get("dominant_platform", "twitter")
+            interview_platform = agent_platforms.get("dominant_platform", "threads")
             logger.info(f"Single-platform interview mode: using '{interview_platform}' (most active platform)")
         else:
             interview_platform = None  # None means dual-platform in the batch API
@@ -1329,16 +1329,16 @@ class GraphToolsService:
 
                 if dual_platform:
                     # Dual-platform: collect from both
-                    twitter_result = results_dict.get(f"twitter_{agent_idx}", {})
-                    reddit_result = results_dict.get(f"reddit_{agent_idx}", {})
+                    threads_result = results_dict.get(f"threads_{agent_idx}", {})
+                    facebook_result = results_dict.get(f"facebook_{agent_idx}", {})
 
-                    twitter_response = self._clean_tool_call_response(twitter_result.get("response", ""))
-                    reddit_response = self._clean_tool_call_response(reddit_result.get("response", ""))
+                    threads_response = self._clean_tool_call_response(threads_result.get("response", ""))
+                    facebook_response = self._clean_tool_call_response(facebook_result.get("response", ""))
 
-                    twitter_text = twitter_response if twitter_response else "(No response from this platform)"
-                    reddit_text = reddit_response if reddit_response else "(No response from this platform)"
-                    response_text = f"[Twitter Platform Response]\n{twitter_text}\n\n[Reddit Platform Response]\n{reddit_text}"
-                    combined_responses = f"{twitter_response} {reddit_response}"
+                    threads_text = threads_response if threads_response else "(No response from this platform)"
+                    facebook_text = facebook_response if facebook_response else "(No response from this platform)"
+                    response_text = f"[Threads Platform Response]\n{threads_text}\n\n[Facebook Platform Response]\n{facebook_text}"
+                    combined_responses = f"{threads_response} {facebook_response}"
                 else:
                     # Single-platform: only use the selected platform
                     platform_result = results_dict.get(f"{interview_platform}_{agent_idx}", {})
@@ -1577,22 +1577,22 @@ class GraphToolsService:
 
         profiles = []
 
-        # Preferentially try to read Reddit JSON format
-        reddit_profile_path = os.path.join(sim_dir, "reddit_profiles.json")
-        if os.path.exists(reddit_profile_path):
+        # Preferentially try to read Facebook JSON format
+        facebook_profile_path = os.path.join(sim_dir, "facebook_profiles.json")
+        if os.path.exists(facebook_profile_path):
             try:
-                with open(reddit_profile_path, 'r', encoding='utf-8') as f:
+                with open(facebook_profile_path, 'r', encoding='utf-8') as f:
                     profiles = json.load(f)
-                logger.info(f"Loaded {len(profiles)} profiles from reddit_profiles.json")
+                logger.info(f"Loaded {len(profiles)} profiles from facebook_profiles.json")
                 return profiles
             except Exception as e:
-                logger.warning(f"Failed to read reddit_profiles.json: {e}")
+                logger.warning(f"Failed to read facebook_profiles.json: {e}")
 
-        # Try to read Twitter CSV format
-        twitter_profile_path = os.path.join(sim_dir, "twitter_profiles.csv")
-        if os.path.exists(twitter_profile_path):
+        # Try to read Threads CSV format
+        threads_profile_path = os.path.join(sim_dir, "threads_profiles.csv")
+        if os.path.exists(threads_profile_path):
             try:
-                with open(twitter_profile_path, 'r', encoding='utf-8') as f:
+                with open(threads_profile_path, 'r', encoding='utf-8') as f:
                     reader = csv.DictReader(f)
                     for row in reader:
                         profiles.append({
@@ -1602,10 +1602,10 @@ class GraphToolsService:
                             "persona": row.get("user_char", ""),
                             "profession": "Unknown"
                         })
-                logger.info(f"Loaded {len(profiles)} profiles from twitter_profiles.csv")
+                logger.info(f"Loaded {len(profiles)} profiles from threads_profiles.csv")
                 return profiles
             except Exception as e:
-                logger.warning(f"Failed to read twitter_profiles.csv: {e}")
+                logger.warning(f"Failed to read threads_profiles.csv: {e}")
 
         return profiles
 
@@ -1704,7 +1704,7 @@ class GraphToolsService:
         for i, profile in enumerate(profiles):
             if len(selected_agents) >= max_agents:
                 break
-            # Reddit profiles use 'name'; Twitter CSV mapping uses 'realname'.
+            # Facebook profiles use 'name'; Threads CSV mapping uses 'realname'.
             realname = (profile.get("realname") or profile.get("name") or "").lower()
             username = (profile.get("username") or "").lower()
             profession = (profile.get("profession") or "").lower()
@@ -1735,10 +1735,10 @@ class GraphToolsService:
     ) -> Dict[str, Any]:
         """
         Determine which platform each agent was most active on by counting
-        actions in twitter/actions.jsonl and reddit/actions.jsonl.
+        actions in threads/actions.jsonl and facebook/actions.jsonl.
 
         Returns a dict with:
-            - per_agent: {agent_idx: "twitter"|"reddit"}
+            - per_agent: {agent_idx: "threads"|"facebook"}
             - dominant_platform: the platform with more total actions across selected agents
         """
         sim_dir = os.path.join(
@@ -1747,10 +1747,10 @@ class GraphToolsService:
         )
 
         agent_set = set(agent_indices)
-        twitter_counts: Dict[int, int] = {idx: 0 for idx in agent_indices}
-        reddit_counts: Dict[int, int] = {idx: 0 for idx in agent_indices}
+        threads_counts: Dict[int, int] = {idx: 0 for idx in agent_indices}
+        facebook_counts: Dict[int, int] = {idx: 0 for idx in agent_indices}
 
-        for platform_name, counts in [("twitter", twitter_counts), ("reddit", reddit_counts)]:
+        for platform_name, counts in [("threads", threads_counts), ("facebook", facebook_counts)]:
             actions_path = os.path.join(sim_dir, platform_name, "actions.jsonl")
             if not os.path.exists(actions_path):
                 continue
@@ -1771,17 +1771,17 @@ class GraphToolsService:
                 logger.warning(f"Failed to read {platform_name} actions for platform detection: {e}")
 
         per_agent: Dict[int, str] = {}
-        total_twitter = 0
-        total_reddit = 0
+        total_threads = 0
+        total_facebook = 0
         for idx in agent_indices:
-            tc = twitter_counts.get(idx, 0)
-            rc = reddit_counts.get(idx, 0)
-            total_twitter += tc
-            total_reddit += rc
-            per_agent[idx] = "twitter" if tc >= rc else "reddit"
+            tc = threads_counts.get(idx, 0)
+            rc = facebook_counts.get(idx, 0)
+            total_threads += tc
+            total_facebook += rc
+            per_agent[idx] = "threads" if tc >= rc else "facebook"
 
-        dominant = "twitter" if total_twitter >= total_reddit else "reddit"
-        logger.info(f"Platform activity: twitter={total_twitter}, reddit={total_reddit}, dominant={dominant}")
+        dominant = "threads" if total_threads >= total_facebook else "facebook"
+        logger.info(f"Platform activity: threads={total_threads}, facebook={total_facebook}, dominant={dominant}")
 
         return {
             "per_agent": per_agent,

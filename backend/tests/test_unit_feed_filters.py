@@ -344,7 +344,7 @@ def test_trending_sort_uses_surface_stats_reader(tmp_path):
         return _make_card(state.simulation_id, created_at=state.created_at)
 
     def reader(sim_dir: str) -> int:
-        sim_id = sim_dir.rsplit("/", 1)[-1]
+        sim_id = Path(sim_dir).name
         return serves.get(sim_id, 0)
 
     cards = select_public_cards(

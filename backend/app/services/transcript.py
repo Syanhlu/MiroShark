@@ -2,7 +2,7 @@
 
 Turns a simulation's on-disk artifacts (``simulation_config.json``,
 ``trajectory.json``, ``quality.json``, ``resolution.json``,
-``outcome.json``, ``reddit_profiles.json``) into a citable, readable
+``outcome.json``, ``facebook_profiles.json``) into a citable, readable
 transcript in either Markdown (for Notion / Obsidian / Substack /
 research papers) or JSON (for SDKs / pipelines).
 
@@ -72,15 +72,15 @@ def _classify_stance(value: float) -> str:
 def _load_profile_names(sim_dir: str) -> dict[int, str]:
     """``user_id → display name`` lookup for the simulation's agents.
 
-    Reads ``reddit_profiles.json`` first (every run produces it), then
+    Reads ``facebook_profiles.json`` first (every run produces it), then
     ``polymarket_profiles.json`` as a secondary source (some runs add
     polymarket-only personas). Each profile has ``user_id`` (int) and a
     ``name`` field; we coerce both, skip malformed rows, and merge
     additively so a polymarket-only id can resolve even when the same
-    ``user_id`` is missing from reddit_profiles.
+    ``user_id`` is missing from facebook_profiles.
     """
     out: dict[int, str] = {}
-    for filename in ("reddit_profiles.json", "polymarket_profiles.json"):
+    for filename in ("facebook_profiles.json", "polymarket_profiles.json"):
         data = _safe_load_json(os.path.join(sim_dir, filename))
         if not isinstance(data, list):
             continue
@@ -95,7 +95,7 @@ def _load_profile_names(sim_dir: str) -> dict[int, str]:
             name = (row.get("name") or row.get("username") or "").strip()
             if not name:
                 continue
-            # First-write wins so reddit_profiles takes precedence — it
+            # First-write wins so facebook_profiles takes precedence — it
             # carries the canonical display name on every run.
             out.setdefault(uid, name)
     return out

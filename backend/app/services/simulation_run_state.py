@@ -29,7 +29,7 @@ class AgentAction:
     """Agent action record"""
     round_num: int
     timestamp: str
-    platform: str  # twitter / reddit
+    platform: str  # threads / facebook
     agent_id: int
     agent_name: str
     action_type: str  # CREATE_POST, LIKE_POST, etc.
@@ -58,8 +58,8 @@ class RoundSummary:
     start_time: str
     end_time: Optional[str] = None
     simulated_hour: int = 0
-    twitter_actions: int = 0
-    reddit_actions: int = 0
+    threads_actions: int = 0
+    facebook_actions: int = 0
     active_agents: List[int] = field(default_factory=list)
     actions: List[AgentAction] = field(default_factory=list)
 
@@ -69,8 +69,8 @@ class RoundSummary:
             "start_time": self.start_time,
             "end_time": self.end_time,
             "simulated_hour": self.simulated_hour,
-            "twitter_actions": self.twitter_actions,
-            "reddit_actions": self.reddit_actions,
+            "threads_actions": self.threads_actions,
+            "facebook_actions": self.facebook_actions,
             "active_agents": self.active_agents,
             "actions_count": len(self.actions),
             "actions": [a.to_dict() for a in self.actions],
@@ -90,24 +90,27 @@ class SimulationRunState:
     total_simulation_hours: int = 0
 
     # Per-platform independent rounds and simulated time (for multi-platform parallel display)
-    twitter_current_round: int = 0
-    reddit_current_round: int = 0
+    threads_current_round: int = 0
+    facebook_current_round: int = 0
     polymarket_current_round: int = 0
-    twitter_simulated_hours: int = 0
-    reddit_simulated_hours: int = 0
+    threads_simulated_hours: int = 0
+    facebook_simulated_hours: int = 0
     polymarket_simulated_hours: int = 0
 
     # Platform status
-    twitter_running: bool = False
-    reddit_running: bool = False
+    threads_running: bool = False
+    facebook_running: bool = False
     polymarket_running: bool = False
-    twitter_actions_count: int = 0
-    reddit_actions_count: int = 0
+    # Standalone only — TikTok has no run_parallel_simulation.py integration
+    # yet, so it never gets the per-round/actions_count tracking below.
+    tiktok_running: bool = False
+    threads_actions_count: int = 0
+    facebook_actions_count: int = 0
     polymarket_actions_count: int = 0
 
     # Platform completion status (detected via simulation_end events in actions.jsonl)
-    twitter_completed: bool = False
-    reddit_completed: bool = False
+    threads_completed: bool = False
+    facebook_completed: bool = False
     polymarket_completed: bool = False
 
     # Per-round summaries
@@ -134,10 +137,10 @@ class SimulationRunState:
         if len(self.recent_actions) > self.max_recent_actions:
             self.recent_actions = self.recent_actions[:self.max_recent_actions]
 
-        if action.platform == "twitter":
-            self.twitter_actions_count += 1
-        elif action.platform == "reddit":
-            self.reddit_actions_count += 1
+        if action.platform == "threads":
+            self.threads_actions_count += 1
+        elif action.platform == "facebook":
+            self.facebook_actions_count += 1
         elif action.platform == "polymarket":
             self.polymarket_actions_count += 1
 
@@ -153,22 +156,23 @@ class SimulationRunState:
             "total_simulation_hours": self.total_simulation_hours,
             "progress_percent": round(self.current_round / max(self.total_rounds, 1) * 100, 1),
             # Per-platform independent rounds and time
-            "twitter_current_round": self.twitter_current_round,
-            "reddit_current_round": self.reddit_current_round,
+            "threads_current_round": self.threads_current_round,
+            "facebook_current_round": self.facebook_current_round,
             "polymarket_current_round": self.polymarket_current_round,
-            "twitter_simulated_hours": self.twitter_simulated_hours,
-            "reddit_simulated_hours": self.reddit_simulated_hours,
+            "threads_simulated_hours": self.threads_simulated_hours,
+            "facebook_simulated_hours": self.facebook_simulated_hours,
             "polymarket_simulated_hours": self.polymarket_simulated_hours,
-            "twitter_running": self.twitter_running,
-            "reddit_running": self.reddit_running,
+            "threads_running": self.threads_running,
+            "facebook_running": self.facebook_running,
             "polymarket_running": self.polymarket_running,
-            "twitter_completed": self.twitter_completed,
-            "reddit_completed": self.reddit_completed,
+            "tiktok_running": self.tiktok_running,
+            "threads_completed": self.threads_completed,
+            "facebook_completed": self.facebook_completed,
             "polymarket_completed": self.polymarket_completed,
-            "twitter_actions_count": self.twitter_actions_count,
-            "reddit_actions_count": self.reddit_actions_count,
+            "threads_actions_count": self.threads_actions_count,
+            "facebook_actions_count": self.facebook_actions_count,
             "polymarket_actions_count": self.polymarket_actions_count,
-            "total_actions_count": self.twitter_actions_count + self.reddit_actions_count + self.polymarket_actions_count,
+            "total_actions_count": self.threads_actions_count + self.facebook_actions_count + self.polymarket_actions_count,
             "started_at": self.started_at,
             "updated_at": self.updated_at,
             "completed_at": self.completed_at,

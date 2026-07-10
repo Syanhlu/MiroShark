@@ -364,8 +364,8 @@ def build_turtle(
 
     platforms = repro_blob.get("platforms") or {}
     if isinstance(platforms, dict):
-        lines.append(f"  mir:twitterEnabled {_ttl_bool(bool(platforms.get('twitter', False)))} ;")
-        lines.append(f"  mir:redditEnabled {_ttl_bool(bool(platforms.get('reddit', False)))} ;")
+        lines.append(f"  mir:threadsEnabled {_ttl_bool(bool(platforms.get('threads', False)))} ;")
+        lines.append(f"  mir:facebookEnabled {_ttl_bool(bool(platforms.get('facebook', False)))} ;")
         lines.append(f"  mir:polymarketEnabled {_ttl_bool(bool(platforms.get('polymarket', False)))} ;")
 
     consensus = webhook_payload.get("final_consensus")

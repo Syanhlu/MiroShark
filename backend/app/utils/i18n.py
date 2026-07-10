@@ -178,6 +178,10 @@ def lang_block(locale: str, fields: list) -> str:
             f"bằng tiếng Việt."
         ),
         "zh-CN": f"重要：请用中文编写 {_join(fields, '、', '和')} 字段。",
+        "vi": (
+            f"QUAN TRỌNG: Viết {'các trường' if plural else 'trường'} "
+            f"{_join(fields, ', ', 'và')} hoàn toàn bằng tiếng Việt."
+        ),
     }
     instruction = instructions.get(locale, "")
     return f"{instruction}\n\n" if instruction else ""

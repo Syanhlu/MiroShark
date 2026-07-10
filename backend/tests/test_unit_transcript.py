@@ -46,7 +46,7 @@ def populated_sim_dir(tmp_path: Path) -> Path:
     """Simulation directory with the artifacts the transcript reads:
     profiles, trajectory (3 snapshots, viral_posts on each), quality,
     resolution, outcome."""
-    (tmp_path / "reddit_profiles.json").write_text(json.dumps([
+    (tmp_path / "facebook_profiles.json").write_text(json.dumps([
         {"user_id": 1, "username": "sarahc", "name": "Sarah Chen", "bio": "analyst"},
         {"user_id": 2, "username": "miker",  "name": "Mike Rodriguez", "bio": "trader"},
         {"user_id": 3, "username": "ja",     "name": "Jamal Adeyemi", "bio": "researcher"},
@@ -191,7 +191,7 @@ def test_load_profile_names_missing_dir_is_empty(tmp_path):
 def test_load_profile_names_skips_corrupt_rows(tmp_path):
     from app.services.transcript import _load_profile_names
 
-    (tmp_path / "reddit_profiles.json").write_text(json.dumps([
+    (tmp_path / "facebook_profiles.json").write_text(json.dumps([
         {"user_id": "not-an-int", "name": "Bad"},
         {"user_id": 7, "name": ""},          # empty name → skip
         {"user_id": 8, "name": "Good"},
@@ -431,7 +431,7 @@ def test_render_markdown_truncates_oversized_runs(tmp_path):
         for i in range(1, 201)
     ]
     (tmp_path / "trajectory.json").write_text(json.dumps({"snapshots": snaps}), encoding="utf-8")
-    (tmp_path / "reddit_profiles.json").write_text(json.dumps([
+    (tmp_path / "facebook_profiles.json").write_text(json.dumps([
         {"user_id": 1, "name": "Solo"},
     ]), encoding="utf-8")
 
