@@ -4,37 +4,45 @@
 
 Four independent model slots (see [Configuration](CONFIGURATION.md#model-slots) for the env vars). This doc covers which models to put in which slot.
 
-## Cloud preset (OpenRouter)
+## Cloud preset (OpenAI API)
 
-One benchmarked preset ships in `.env.example`. Copy it and set your API key.
+One direct OpenAI preset ships in `.env.example`. Copy it and put the same
+OpenAI API key (`sk-...`) in the listed key slots.
 
 Each slot controls a different quality axis:
 
 | Slot | Controls | Key finding |
 |---|---|---|
-| **Default** | Persona richness, sim density | Mercury 2 — a diffusion LLM picked for speed; off the report's quality path |
-| **Smart** | Report quality (#1 lever) | Gemini 3 Flash holds up on ReACT report loops with reasoning disabled |
-| **NER** | Extraction reliability | Needs deterministic JSON — pick a model that doesn't silently emit CoT |
-| **Wonderwall** | Cost (biggest consumer) | 850+ calls, 7M+ tokens. Verbosity matters more than $/M |
+| **Default** | Persona richness, sim density | `gpt-5.4-mini` keeps bulk setup work fast |
+| **Smart** | Report quality (#1 lever) | `gpt-5.4` is the quality slot for reports, ontology, and graph reasoning |
+| **NER** | Extraction reliability | `gpt-5.4-mini` handles deterministic JSON extraction |
+| **Wonderwall** | Cost (biggest consumer) | `gpt-5.4-nano` keeps the 850+ call sim loop around ~$1-2/run |
 
-### Cloud mode — ~$1/run, ~10 min
+### Cloud mode — ~$1-2/run, ~10 min
 
-Mercury 2 personas + Gemini 3 Flash smart/NER + DeepSeek V4 Flash for the sim loop and web search. Reasoning is disabled on every slot (`LLM_DISABLE_REASONING=true` sends `reasoning: {enabled: false}` in `extra_body`), which is the difference between a ~45s scenario-suggest call and a ~3s one.
+Direct OpenAI uses `gpt-5.4-mini` for default/NER, `gpt-5.4` for Smart, and
+`gpt-5.4-nano` for the Wonderwall sim loop.
 
 | Slot | Model | Notes |
 |---|---|---|
-| Default | `inception/mercury-2:nitro` | Persona generation, sim config, memory compaction |
-| Smart | `google/gemini-3-flash-preview` | Report ReACT loop — only ~19 calls/run |
-| NER | `google/gemini-3-flash-preview` | Stable JSON with reasoning off |
-| Wonderwall | `deepseek/deepseek-v4-flash:nitro` | 850+ agent-action calls/run; keep verbosity low |
+| Default | `gpt-5.4-mini` | Persona generation, sim config, memory compaction |
+| Smart | `gpt-5.4` | Report ReACT loop — only ~19 calls/run |
+| NER | `gpt-5.4-mini` | Stable JSON extraction |
+| Wonderwall | `gpt-5.4-nano` | 850+ agent-action calls/run; keeps the sim loop around ~$1-2/run |
 
-Embeddings use `openai/text-embedding-3-large` (truncated to 768 dims via Matryoshka). Web enrichment uses `deepseek/deepseek-v4-flash:online`.
+Embeddings use `text-embedding-3-large` (truncated to 768 dims via Matryoshka).
+`WEB_SEARCH_MODEL` is blank by default; web enrichment skips model-only browsing
+unless SearXNG is configured. OpenRouter `:online` models remain available as
+per-slot overrides.
 
-> **Latency note** — every OpenRouter call goes through `LLMClient`, which injects `reasoning: {enabled: false}` into `extra_body` by default. Turn it off with `LLM_DISABLE_REASONING=false` only if a specific slot benefits from chain-of-thought (rare for MiroShark's structured prompts).
+> **Provider note** — per-slot OpenRouter and self-hosted overrides still work.
+> `LLM_DISABLE_REASONING=true` only injects OpenRouter's
+> `reasoning: {enabled: false}` body when the effective slot base URL contains
+> `openrouter`; direct OpenAI calls do not receive that provider-specific field.
 
 ### Custom endpoint for Wonderwall
 
-The Wonderwall slot accepts a per-slot endpoint override so you can run a self-hosted or fine-tuned model alongside the OpenRouter-backed Default/Smart/NER slots:
+The Wonderwall slot accepts a per-slot endpoint override so you can run a self-hosted or fine-tuned model alongside the Default/Smart/NER slots:
 
 ```bash
 WONDERWALL_BASE_URL=https://your-endpoint.example.com/v1
@@ -42,7 +50,7 @@ WONDERWALL_API_KEY=not-checked          # any string for open endpoints
 WONDERWALL_MODEL_NAME=your-model-id
 ```
 
-Either field can be omitted — a blank `WONDERWALL_BASE_URL` reuses `LLM_BASE_URL`, a blank `WONDERWALL_API_KEY` reuses `LLM_API_KEY`. Useful for routing the 850+ agent-action calls per run to a vLLM / Modal / Ollama-on-a-server deployment while keeping the report and graph-build slots on a hosted provider.
+Either field can be omitted — a blank `WONDERWALL_BASE_URL` reuses `LLM_BASE_URL`, a blank `WONDERWALL_API_KEY` reuses `LLM_API_KEY`. Useful for routing the 850+ agent-action calls per run to a vLLM / Modal / Ollama-on-a-server deployment while keeping the report and graph-build slots on OpenAI, OpenRouter, or another hosted provider.
 
 ## Local mode (Ollama)
 

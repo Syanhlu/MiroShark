@@ -72,8 +72,10 @@ if sys.platform == 'win32':
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
+import math
 import random
 import signal
 import sqlite3
@@ -116,6 +118,55 @@ else:
     if os.path.exists(_backend_env):
         load_dotenv(_backend_env)
         print(f"Loaded environment config: {_backend_env}")
+
+
+_SIMULATION_SEED_MODULUS = 2 ** 32
+
+
+def _parse_simulation_seed() -> Optional[int]:
+    raw_seed = os.environ.get("SIMULATION_SEED", "").strip()
+    if not raw_seed:
+        return None
+    try:
+        return int(raw_seed)
+    except ValueError:
+        print(f"Ignoring invalid SIMULATION_SEED={raw_seed!r}; expected an integer")
+        return None
+
+
+def _derive_simulation_seed(base_seed: int, label: str) -> int:
+    digest = hashlib.sha256(label.encode("utf-8")).digest()
+    offset = int.from_bytes(digest[:8], "big")
+    return (base_seed + offset) % _SIMULATION_SEED_MODULUS
+
+
+def _apply_simulation_seed(seed: int, label: str, announce: bool = False) -> None:
+    random.seed(seed)
+    try:
+        import numpy as np  # type: ignore
+    except ImportError:
+        numpy_seeded = False
+    else:
+        np.random.seed(seed % _SIMULATION_SEED_MODULUS)
+        numpy_seeded = True
+    if announce:
+        np_status = "numpy seeded" if numpy_seeded else "numpy unavailable"
+        print(f"SIMULATION_SEED active for {label}: {seed} ({np_status})")
+
+
+_BASE_SIMULATION_SEED = _parse_simulation_seed()
+if _BASE_SIMULATION_SEED is not None:
+    _apply_simulation_seed(_BASE_SIMULATION_SEED, "process", announce=True)
+
+
+def _seed_platform_random(platform: str, round_num: Optional[int] = None) -> None:
+    if _BASE_SIMULATION_SEED is None:
+        return
+    label = platform if round_num is None else f"{platform}:round:{round_num}"
+    _apply_simulation_seed(
+        _derive_simulation_seed(_BASE_SIMULATION_SEED, label),
+        label,
+    )
 
 
 class MaxTokensWarningFilter(logging.Filter):
@@ -1143,19 +1194,41 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
     model_config_dict = {}
     if thinking_budget > 0:
         model_config_dict["max_tokens"] = 4096 + thinking_budget
+    temperature_raw = os.environ.get("WONDERWALL_TEMPERATURE", "").strip()
+    if temperature_raw:
+        try:
+            temperature = float(temperature_raw)
+            if not math.isfinite(temperature) or temperature < 0:
+                raise ValueError
+            model_config_dict["temperature"] = temperature
+        except ValueError:
+            print(
+                f"Ignoring invalid WONDERWALL_TEMPERATURE={temperature_raw!r}; "
+                "using provider default"
+            )
 
-    print(f"{config_label} model={llm_model}, base_url={llm_base_url[:40] if llm_base_url else 'default'}, max_tokens={model_config_dict.get('max_tokens', 'default')}...")
+    default_headers = {
+        'User-Agent': f'MiroShark/1.0 (Wonderwall-Simulation; model={llm_model})',
+    }
+    if 'openrouter' in (llm_base_url or '').lower():
+        default_headers.update({
+            'HTTP-Referer': 'https://www.miroshark.xyz/',
+            'X-OpenRouter-Title': 'MiroShark - Simulate anything, for $1 & less than 10 min.',
+            'X-OpenRouter-Categories': 'roleplay,personal-agent',
+        })
+
+    print(
+        f"{config_label} model={llm_model}, "
+        f"base_url={llm_base_url[:40] if llm_base_url else 'default'}, "
+        f"max_tokens={model_config_dict.get('max_tokens', 'default')}, "
+        f"temperature={model_config_dict.get('temperature', 'default')}..."
+    )
 
     return ModelFactory.create(
         model_platform=ModelPlatformType.OPENAI,
         model_type=llm_model,
         model_config_dict=model_config_dict or None,
-        default_headers={
-            'HTTP-Referer': 'https://www.miroshark.xyz/',
-            'X-OpenRouter-Title': 'MiroShark - Simulate anything, for $1 & less than 10 min.',
-            'X-OpenRouter-Categories': 'roleplay,personal-agent',
-            'User-Agent': f'MiroShark/1.0 (Wonderwall-Simulation; model={llm_model})',
-        },
+        default_headers=default_headers,
     )
 
 
@@ -1337,6 +1410,7 @@ async def run_threads_simulation(
         print(f"[Threads] {msg}")
     
     log_info("Initializing...")
+    _seed_platform_random("threads")
 
     # Threads uses the general LLM configuration
     model = create_model(config, use_boost=False)
@@ -1471,7 +1545,7 @@ async def run_threads_simulation(
 
         # Surface the current round to every LLM call inside the subprocess
         # via an env var — the only context channel that reaches CAMEL's
-        # OpenRouter call site cleanly without reworking its signature.
+        # model call site cleanly without reworking its signature.
         # `SocialAgent._aget_model_response` reads this and forwards it to
         # Langfuse as `metadata.round`.
         os.environ['MIROSHARK_ROUND_NUM'] = str(round_num + 1)
@@ -1654,6 +1728,7 @@ async def run_facebook_simulation(
         print(f"[Facebook] {msg}")
     
     log_info("Initializing...")
+    _seed_platform_random("facebook")
 
     # Facebook uses the boost LLM configuration (if available, otherwise falls back to general config)
     model = create_model(config, use_boost=True)
@@ -1795,7 +1870,7 @@ async def run_facebook_simulation(
 
         # Surface the current round to every LLM call inside the subprocess
         # via an env var — the only context channel that reaches CAMEL's
-        # OpenRouter call site cleanly without reworking its signature.
+        # model call site cleanly without reworking its signature.
         # `SocialAgent._aget_model_response` reads this and forwards it to
         # Langfuse as `metadata.round`.
         os.environ['MIROSHARK_ROUND_NUM'] = str(round_num + 1)
@@ -2079,6 +2154,7 @@ async def run_polymarket_simulation(
         print(f"[Polymarket] {msg}")
 
     log_info("Initializing...")
+    _seed_platform_random("polymarket")
 
     model = create_model(config, use_boost=False)
 
@@ -2400,6 +2476,7 @@ async def run_synchronized_simulation(
     polymarket_db = os.path.join(simulation_dir, "polymarket_simulation.db")
 
     if has_threads:
+        _seed_platform_random("threads")
         threads_result = PlatformSimulation()
         profile_path = os.path.join(simulation_dir, "threads_profiles.csv")
         threads_result.agent_graph = await generate_threads_agent_graph(
@@ -2430,6 +2507,7 @@ async def run_synchronized_simulation(
             log_info(f"[Threads] twhin-bert pre-warm failed (non-fatal): {_e}")
 
     if has_facebook:
+        _seed_platform_random("facebook")
         facebook_result = PlatformSimulation()
         profile_path = os.path.join(simulation_dir, "facebook_profiles.json")
         facebook_result.agent_graph = await generate_facebook_agent_graph(
@@ -2450,6 +2528,7 @@ async def run_synchronized_simulation(
         log_info("[Facebook] Environment ready")
 
     if has_polymarket:
+        _seed_platform_random("polymarket")
         polymarket_result = PlatformSimulation()
         profile_path = os.path.join(simulation_dir, "polymarket_profiles.json")
         profiles = _load_polymarket_profiles(profile_path)
@@ -2481,8 +2560,14 @@ async def run_synchronized_simulation(
                 log_info(f"[{_label}] Posting rules injected into {_n} agents")
 
     # ── Initialize belief trackers ──
+    if has_threads:
+        _seed_platform_random("threads:beliefs")
     threads_belief = BeliefTracker(config, simulation_dir, "twitter") if has_threads else None
+    if has_facebook:
+        _seed_platform_random("facebook:beliefs")
     facebook_belief = BeliefTracker(config, simulation_dir, "reddit") if has_facebook else None
+    if has_polymarket:
+        _seed_platform_random("polymarket:beliefs")
     polymarket_belief = BeliefTracker(config, simulation_dir, "polymarket") if has_polymarket else None
 
     # ── Action loggers ──
@@ -2642,6 +2727,7 @@ async def run_synchronized_simulation(
         platform_tasks = []
 
         if threads_result:
+            _seed_platform_random("threads", round_num)
             active = get_active_agents_for_round(threads_result.env, config, simulated_hour, round_num)
             if active:
                 # Inject beliefs BEFORE the round so agents act on current stance
@@ -2676,6 +2762,7 @@ async def run_synchronized_simulation(
                 platform_tasks.append(("twitter", _step_threads()))
 
         if facebook_result:
+            _seed_platform_random("facebook", round_num)
             active = get_active_agents_for_round(facebook_result.env, config, simulated_hour, round_num)
             if active:
                 if facebook_belief and round_num > 0:
@@ -2709,6 +2796,7 @@ async def run_synchronized_simulation(
                 platform_tasks.append(("reddit", _step_facebook()))
 
         if polymarket_result:
+            _seed_platform_random("polymarket", round_num)
             active = get_active_agents_for_round(polymarket_result.env, config, simulated_hour, round_num)
             if active:
                 if polymarket_belief and round_num > 0:

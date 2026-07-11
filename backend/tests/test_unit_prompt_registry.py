@@ -22,10 +22,13 @@ def _reset_registry():
     _reset_cache_for_tests()
 
 
-def test_available_locales_includes_en_and_zh():
+def test_available_locales_includes_registered_prompt_locales():
     locales = available_locales()
     assert "en" in locales
     assert "zh-CN" in locales
+    assert "de" in locales
+    assert "fr" in locales
+    assert "vi" in locales
 
 
 def test_zh_cn_has_no_missing_keys_relative_to_en():
@@ -76,6 +79,16 @@ def test_de_has_no_missing_keys_relative_to_en():
     )
 
 
+def test_vi_has_no_missing_keys_relative_to_en():
+    """Coverage gate: every English prompt must have a Vietnamese sibling."""
+    missing = missing_keys("vi")
+    assert missing == [], (
+        f"Vietnamese (vi) is missing translations for: {missing}. "
+        "Add them to backend/app/prompts/locales/vi/ or document why "
+        "they should fall back to English."
+    )
+
+
 def test_get_prompt_falls_back_to_english_for_unknown_locale():
     """Unknown locales should fall back to English silently.
 
@@ -101,6 +114,12 @@ def test_get_prompt_returns_chinese_for_zh_cn():
     # At least one CJK character must be in the output to confirm we got
     # the Chinese variant rather than the English fallback.
     assert any("一" <= c <= "鿿" for c in out), out[:200]
+
+
+def test_get_prompt_returns_vietnamese_for_vi():
+    out = get_prompt("social_simulations.twitter_system", "vi",
+                     description_block="Bạn tên là Minh.")
+    assert "BẠN LÀ AI" in out, out[:200]
 
 
 def test_get_prompt_substitutes_placeholders():

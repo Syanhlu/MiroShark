@@ -11,14 +11,17 @@ shape — the exact field set a Polymarket trading bot expects between
 Design notes
 ------------
 
-* **Pure derivation, layered on signal_service.** ``compute_polymarket``
-  calls ``signal_service.compute_signal`` and re-shapes its output.
+* **Belief signal plus AMM read.** ``compute_polymarket`` calls
+  ``signal_service.compute_signal`` and re-shapes its output.
   Every property the signal payload guarantees (tie-break order,
   one-decimal rounding, ISO-8601 timestamp format) carries through.
   A "Bullish 62%" signal here matches what ``signal.json``,
   ``badge.svg``, the gallery card, and the share card report for the
   same simulation — the only new information is the Polymarket-
-  shaped *envelope*, not the data.
+  shaped *envelope* plus a separate AMM probability when available.
+  The backward-compatible ``yes_probability`` remains belief-derived;
+  the simulated AMM probability is exposed separately when a traded
+  market DB is readable.
 
 * **Direction-aware YES probability.** Polymarket's YES side
   represents *"the proposition is true"*. We mirror that semantically:
@@ -79,6 +82,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from . import signal_service
+from . import polymarket_amm
 
 
 _MAX_TITLE_SCENARIO_LEN = 120
@@ -233,6 +237,10 @@ def compute_polymarket(
         signal["bearish_pct"],
     )
     no_prob = round(1.0 - yes_prob, 4)
+    amm_yes_probability = polymarket_amm.load_final_amm_yes_probability(sim_id)
+    amm_source = (
+        polymarket_amm.AMM_SOURCE if amm_yes_probability is not None else None
+    )
 
     return {
         "schema_version": "1",
@@ -247,6 +255,12 @@ def compute_polymarket(
         "neutral_pct": signal["neutral_pct"],
         "bearish_pct": signal["bearish_pct"],
         "quality_health": signal["quality_health"],
+        "amm_yes_probability": amm_yes_probability,
+        "amm_source": amm_source,
+        "probability_sources": {
+            "belief_derived_fields": "belief_split",
+            "amm_yes_probability": amm_source,
+        },
         "suggested_market_title": _suggested_market_title(summary.get("scenario")),
         "source_sim_id": sim_id,
         "polymarket_generated_at": signal["signal_generated_at"],

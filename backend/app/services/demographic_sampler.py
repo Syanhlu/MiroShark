@@ -158,6 +158,11 @@ def sample_seeds(
         ).fetchall()}
 
         where: List[str] = []
+        country_values = (cfg.get('dataset') or {}).get('country_values') or []
+        country_clause = None
+        if country_values and 'country' in cols:
+            country_clause = _in_clause('country', country_values)
+            where.append(country_clause)
         if min_age is not None and 'age' in cols:
             where.append(f"age >= {int(min_age)}")
         if max_age is not None and 'age' in cols:
@@ -192,6 +197,26 @@ def sample_seeds(
             LIMIT {int(limit)}
         """
         rows = conn.execute(query).fetch_df().to_dict(orient='records')
+
+        # Safety net: a country_values mismatch against the parquet's actual
+        # country column (e.g. "United States of America" vs "united states")
+        # must not silently zero out sampling for a single-country dataset.
+        # Retry once without the country predicate rather than return nothing.
+        if not rows and country_clause is not None:
+            logger.warning(
+                "Country filter %s matched zero rows for '%s'; retrying without it",
+                country_values, country_code,
+            )
+            remaining = [w for w in where if w is not country_clause]
+            where_sql = ('WHERE ' + ' AND '.join(remaining)) if remaining else ''
+            query = f"""
+                SELECT *
+                FROM read_parquet({_sql_quote(parquet_glob)})
+                {where_sql}
+                ORDER BY {order_expr}
+                LIMIT {int(limit)}
+            """
+            rows = conn.execute(query).fetch_df().to_dict(orient='records')
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Demographic sample query failed for {country_code}: {e}")
         return []
@@ -208,11 +233,14 @@ def sample_seeds(
 
 def _in_clause(column: str, values: List[Any]) -> str:
     ident = _sql_ident(column)
+    raw = [str(v).strip() for v in values if str(v).strip()]
     norm = [str(v).strip().lower() for v in values if str(v).strip()]
-    if not norm:
+    if not raw:
         return '1=1'
+    rendered_raw = ', '.join(_sql_quote(v) for v in raw)
     rendered = ', '.join(_sql_quote(v) for v in norm)
-    return f"lower(CAST({ident} AS VARCHAR)) IN ({rendered})"
+    value_expr = f"CAST({ident} AS VARCHAR)"
+    return f"({value_expr} IN ({rendered_raw}) OR lower({value_expr}) IN ({rendered}))"
 
 
 def infer_filter_schema(

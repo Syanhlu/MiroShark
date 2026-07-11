@@ -15,8 +15,10 @@ Usage:
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
+import math
 import os
 import random
 import signal
@@ -55,6 +57,49 @@ try:
         _set_active_locale(_locale_env)
 except Exception:
     pass
+
+
+_SIMULATION_SEED_MODULUS = 2 ** 32
+
+
+def _parse_simulation_seed() -> Optional[int]:
+    raw_seed = os.environ.get("SIMULATION_SEED", "").strip()
+    if not raw_seed:
+        return None
+    try:
+        return int(raw_seed)
+    except ValueError:
+        print(f"Ignoring invalid SIMULATION_SEED={raw_seed!r}; expected an integer")
+        return None
+
+
+def _derive_simulation_seed(base_seed: int, label: str) -> int:
+    digest = hashlib.sha256(label.encode("utf-8")).digest()
+    offset = int.from_bytes(digest[:8], "big")
+    return (base_seed + offset) % _SIMULATION_SEED_MODULUS
+
+
+def _apply_simulation_seed(seed: int, label: str, announce: bool = False) -> None:
+    random.seed(seed)
+    try:
+        import numpy as np  # type: ignore
+    except ImportError:
+        numpy_seeded = False
+    else:
+        np.random.seed(seed % _SIMULATION_SEED_MODULUS)
+        numpy_seeded = True
+    if announce:
+        np_status = "numpy seeded" if numpy_seeded else "numpy unavailable"
+        print(f"SIMULATION_SEED active for {label}: {seed} ({np_status})")
+
+
+_BASE_SIMULATION_SEED = _parse_simulation_seed()
+if _BASE_SIMULATION_SEED is not None:
+    _apply_simulation_seed(
+        _derive_simulation_seed(_BASE_SIMULATION_SEED, "twitter"),
+        "twitter",
+        announce=True,
+    )
 
 
 import re
@@ -466,11 +511,30 @@ class ThreadsSimulationRunner:
         if llm_base_url:
             os.environ["OPENAI_API_BASE_URL"] = llm_base_url
         
-        print(f"LLM config: model={llm_model}, base_url={llm_base_url[:40] if llm_base_url else 'default'}...")
+        model_config_dict = {}
+        temperature_raw = os.environ.get("WONDERWALL_TEMPERATURE", "").strip()
+        if temperature_raw:
+            try:
+                temperature = float(temperature_raw)
+                if not math.isfinite(temperature) or temperature < 0:
+                    raise ValueError
+                model_config_dict["temperature"] = temperature
+            except ValueError:
+                print(
+                    f"Ignoring invalid WONDERWALL_TEMPERATURE={temperature_raw!r}; "
+                    "using provider default"
+                )
+        
+        print(
+            f"LLM config: model={llm_model}, "
+            f"base_url={llm_base_url[:40] if llm_base_url else 'default'}, "
+            f"temperature={model_config_dict.get('temperature', 'default')}..."
+        )
         
         return ModelFactory.create(
             model_platform=ModelPlatformType.OPENAI,
             model_type=llm_model,
+            model_config_dict=model_config_dict or None,
             default_headers={
                 'HTTP-Referer': 'https://www.miroshark.xyz/',
                 'X-OpenRouter-Title': 'MiroShark - Simulate anything, for $1 & less than 10 min.',

@@ -122,7 +122,15 @@ class use_locale:
             self._token = None
 
 
-def t(en: str, zh: str = "", locale: str = DEFAULT, *, de: str = "", fr: str = "", vi: str = "") -> str:
+def t(
+    en: str,
+    zh: str = "",
+    locale: str = DEFAULT,
+    *,
+    de: str = "",
+    fr: str = "",
+    vi: str = "",
+) -> str:
     """Pick a translation for ``locale``, falling back to the English source.
 
     ``en`` is the canonical source string. ``zh`` (kept positional for the
@@ -163,6 +171,11 @@ def lang_block(locale: str, fields: list) -> str:
         "fr": (
             f"IMPORTANT : Écris {'les champs' if plural else 'le champ'} "
             f"{_join(fields, ', ', 'et')} uniquement en français."
+        ),
+        "vi": (
+            f"QUAN TRỌNG: Chỉ viết "
+            f"{'các trường' if plural else 'trường'} {_join(fields, ', ', 'và')} "
+            f"bằng tiếng Việt."
         ),
         "zh-CN": f"重要：请用中文编写 {_join(fields, '、', '和')} 字段。",
         "vi": (

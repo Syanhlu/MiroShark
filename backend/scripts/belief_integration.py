@@ -125,7 +125,7 @@ class BeliefTracker:
         self.simulation_dir = simulation_dir
 
         self.belief_states: Dict[int, BeliefState] = {}
-        self.round_analyzer = RoundAnalyzer(self.topics)
+        self.round_analyzer = RoundAnalyzer(self.topics, simulation_req)
         self.trajectory = SimulationTrajectory()
         self.trajectory.topics = self.topics
 

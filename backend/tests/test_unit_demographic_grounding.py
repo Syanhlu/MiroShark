@@ -27,6 +27,56 @@ if str(_BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(_BACKEND_DIR))
 
 
+class _FakeFetchAllResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+class _FakeDataFrame:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def to_dict(self, orient):
+        assert orient == "records"
+        return self._rows
+
+
+class _FakeFetchDfResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetch_df(self):
+        return _FakeDataFrame(self._rows)
+
+
+class _FakeDuckDbConnection:
+    def __init__(self, columns, rows):
+        self.columns = columns
+        self.rows = rows
+        self.queries = []
+        self.closed = False
+
+    def execute(self, query):
+        self.queries.append(query)
+        if query.lstrip().upper().startswith("DESCRIBE"):
+            return _FakeFetchAllResult([(col,) for col in self.columns])
+        return _FakeFetchDfResult(self.rows)
+
+    def close(self):
+        self.closed = True
+
+
+class _FakeDuckDb:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def connect(self):
+        return self.conn
+
+
 # ---------------------------------------------------------------------------
 # country_registry
 # ---------------------------------------------------------------------------
@@ -37,6 +87,7 @@ def test_country_registry_loads_shipped_packs():
     countries = country_registry.all_countries(refresh=True)
     assert "sg" in countries, "Singapore pack missing"
     assert "us" in countries, "USA pack missing"
+    assert "vn" in countries, "Vietnam pack missing"
 
     sg = countries["sg"]
     assert sg["name"] == "Singapore"
@@ -46,21 +97,82 @@ def test_country_registry_loads_shipped_packs():
     assert "north-east" in sg["geography"]["groups"]
 
 
+def test_vietnam_country_pack_schema():
+    from app.services import country_registry
+
+    vn = country_registry.get("vn")
+    assert vn is not None
+    assert vn["code"] == "vn"
+    assert vn["name"] == "Vietnam"
+    assert vn["dataset"]["repo_id"] == "nvidia/Nemotron-Personas-Vietnam"
+    assert vn["dataset"]["local_paths"] == [
+        "backend/data/nemotron/vietnam/data/train-*.parquet",
+        "backend/data/nemotron/data/train-*.parquet",
+    ]
+    assert vn["dataset"]["download_dir"] == "backend/data/nemotron/vietnam"
+    assert vn["dataset"]["allow_patterns"] == ["data/train-*", "README.md"]
+    assert vn["dataset"]["country_values"] == ["Việt Nam", "vietnam", "viet nam", "vn"]
+
+    geo = vn["geography"]
+    assert geo["field"] == "region"
+    assert geo["label"] == "Province/City"
+    assert geo["values"] == [
+        "Thủ Đô Hà Nội",
+        "Thành Phố Hải Phòng",
+        "Thành Phố Đà Nẵng",
+        "Thành Phố Hồ Chí Minh",
+        "Tỉnh Đồng Nai",
+        "Thành Phố Cần Thơ",
+    ]
+    assert geo["groups"] == {
+        "north": ["Thủ Đô Hà Nội", "Thành Phố Hải Phòng"],
+        "central": ["Thành Phố Đà Nẵng"],
+        "south": ["Thành Phố Hồ Chí Minh", "Tỉnh Đồng Nai", "Thành Phố Cần Thơ"],
+    }
+
+    fields = {entry["field"]: entry for entry in vn["filter_fields"]}
+    assert fields["age"] == {
+        "field": "age",
+        "type": "range",
+        "label": "Age Range",
+        "default_min": 18,
+        "default_max": 65,
+    }
+    assert fields["region"]["type"] == "multi-chips"
+    assert fields["occupation"]["type"] == "dropdown"
+    assert fields["education_level"]["type"] == "dropdown"
+    assert fields["zone"] == {
+        "field": "zone",
+        "type": "single-chips",
+        "label": "Zone (Urban/Rural)",
+    }
+    assert fields["sex"]["type"] == "single-chips"
+    assert "industry" not in fields
+    assert vn["max_agents"] == 500
+    assert vn["default_agents"] == 250
+
+
 def test_country_registry_summary_omits_dataset_paths():
     """list_summaries() is what the public /api/countries endpoint exposes.
     It must not leak HF repo ids or local parquet paths."""
     from app.services import country_registry
 
     summaries = country_registry.list_summaries()
-    assert len(summaries) >= 2
+    assert len(summaries) >= 3
     sg_summary = next(s for s in summaries if s["code"] == "sg")
+    vn_summary = next(s for s in summaries if s["code"] == "vn")
     forbidden = {"dataset", "repo_id", "local_paths", "download_dir"}
     assert forbidden.isdisjoint(sg_summary.keys()), (
         f"summary leaks internal fields: {sg_summary}"
     )
+    assert forbidden.isdisjoint(vn_summary.keys()), (
+        f"summary leaks internal fields: {vn_summary}"
+    )
     # The fields the SPA actually needs.
     assert {"code", "name", "flag_emoji", "geography_field",
             "geography_label", "geography_count"}.issubset(sg_summary.keys())
+    assert vn_summary["geography_field"] == "region"
+    assert vn_summary["geography_count"] == 6
 
 
 def test_country_registry_lookup_is_case_insensitive():
@@ -188,6 +300,59 @@ def test_sample_seeds_missing_parquet_returns_empty():
         fake_duckdb.connect.assert_not_called()
 
 
+def test_sample_seeds_applies_country_values_with_vietnamese_diacritics():
+    from app.services import demographic_sampler
+
+    conn = _FakeDuckDbConnection(
+        columns=["uuid", "country", "region", "sex", "age"],
+        rows=[{
+            "uuid": "seed-1",
+            "country": "Việt Nam",
+            "region": "Thủ Đô Hà Nội",
+            "sex": "Nữ",
+            "age": 30,
+        }],
+    )
+    with patch.object(demographic_sampler, "_try_import_duckdb", return_value=_FakeDuckDb(conn)), \
+         patch.object(demographic_sampler, "_resolve_parquet_glob", return_value="dummy.parquet"):
+        rows = demographic_sampler.sample_seeds("vn", limit=1)
+
+    assert rows[0]["_geography_field"] == "region"
+    assert rows[0]["_geography_value"] == "Thủ Đô Hà Nội"
+    query = conn.queries[-1]
+    assert 'CAST("country" AS VARCHAR) IN (\'Việt Nam\', \'vietnam\', \'viet nam\', \'vn\')' in query
+    assert 'lower(CAST("country" AS VARCHAR)) IN (\'việt nam\', \'vietnam\', \'viet nam\', \'vn\')' in query
+
+
+def test_sample_seeds_skips_missing_industry_column():
+    from app.services import demographic_sampler
+
+    conn = _FakeDuckDbConnection(
+        columns=["uuid", "country", "region", "occupation", "age"],
+        rows=[{
+            "uuid": "seed-1",
+            "country": "Việt Nam",
+            "region": "Thành Phố Hồ Chí Minh",
+            "occupation": "Nhân viên văn phòng",
+            "age": 42,
+        }],
+    )
+    with patch.object(demographic_sampler, "_try_import_duckdb", return_value=_FakeDuckDb(conn)), \
+         patch.object(demographic_sampler, "_resolve_parquet_glob", return_value="dummy.parquet"):
+        rows = demographic_sampler.sample_seeds(
+            "vn",
+            limit=1,
+            occupations=["Nhân viên văn phòng"],
+            industries=["Sản xuất"],
+        )
+
+    assert rows
+    query = conn.queries[-1]
+    assert '"occupation"' in query
+    assert '"industry"' not in query
+    assert "Sản xuất" not in query
+
+
 def test_infer_filter_schema_no_deps_returns_empty():
     from app.services import demographic_sampler
 
@@ -235,3 +400,14 @@ def test_generator_no_country_means_feature_off():
             gen = WonderwallProfileGenerator()
         assert gen.country_code is None
         assert gen._demographic_seeds_by_user_id == {}
+
+
+def test_reddit_gender_normalization_handles_vietnamese_values():
+    pytest.importorskip("camel")
+
+    from app.services.wonderwall_profile_generator import WonderwallProfileGenerator
+
+    gen = object.__new__(WonderwallProfileGenerator)
+    assert gen._normalize_gender("Nam") == "male"
+    assert gen._normalize_gender("Nữ") == "female"
+    assert gen._normalize_gender("nu") == "female"

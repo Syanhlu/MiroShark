@@ -68,6 +68,12 @@ def _signal(
         "neutral_pct": neutral_pct,
         "bearish_pct": bearish_pct,
         "quality_health": quality_health,
+        "amm_yes_probability": None,
+        "amm_source": None,
+        "probability_sources": {
+            "belief_derived_fields": "belief_split",
+            "amm_yes_probability": None,
+        },
         "signal_generated_at": "2026-06-08T12:00:00Z",
     }
 
@@ -322,6 +328,9 @@ def test_result_block_field_set_matches_signal_json():
         "neutral_pct",
         "bearish_pct",
         "quality_health",
+        "amm_yes_probability",
+        "amm_source",
+        "probability_sources",
         "signal_generated_at",
     }
     assert result_keys == expected

@@ -5987,6 +5987,9 @@ components:
         - neutral_pct
         - bearish_pct
         - quality_health
+        - amm_yes_probability
+        - amm_source
+        - probability_sources
         - signal_generated_at
       properties:
         schema_version:
@@ -6052,6 +6055,43 @@ components:
             (typically `excellent` / `good` / `fair` / `poor`). Falls
             back to `"N/A"` when the underlying field is missing or
             empty.
+        amm_yes_probability:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: |
+            Final YES probability read from the simulated constant-product
+            AMM when a traded Polymarket market database is available.
+            Derived from final reserves as
+            `reserve_b / (reserve_a + reserve_b)`, matching the live
+            Polymarket market endpoints. `null` when Polymarket was not
+            enabled, no market has trades, or the AMM files cannot be read.
+        amm_source:
+          type: string
+          enum: [simulated_amm]
+          nullable: true
+          description: |
+            Source marker for `amm_yes_probability`; `null` when no AMM
+            price was available.
+        probability_sources:
+          type: object
+          required: [belief_derived_fields, amm_yes_probability]
+          properties:
+            belief_derived_fields:
+              type: string
+              enum: [belief_split]
+              description: |
+                Existing direction, confidence, and stance percentages
+                remain derived from the final belief split.
+            amm_yes_probability:
+              type: string
+              enum: [simulated_amm]
+              nullable: true
+              description: |
+                Source for `amm_yes_probability`; `null` when no AMM price
+                was available.
         signal_generated_at:
           type: string
           format: date-time
@@ -6928,6 +6968,9 @@ components:
         - neutral_pct
         - bearish_pct
         - quality_health
+        - amm_yes_probability
+        - amm_source
+        - probability_sources
         - suggested_market_title
         - source_sim_id
         - polymarket_generated_at
@@ -7022,6 +7065,46 @@ components:
             `quality.json` (typically `excellent` / `good` / `fair` /
             `poor`). Falls back to `"N/A"` when the underlying field
             is missing or empty.
+        amm_yes_probability:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: |
+            Final YES probability read from the simulated constant-product
+            AMM when a traded Polymarket market database is available.
+            Derived from final reserves as
+            `reserve_b / (reserve_a + reserve_b)`, matching
+            `/api/simulation/{id}/polymarket/markets`. This is separate
+            from the backward-compatible belief-derived `yes_probability`.
+            `null` when Polymarket was not enabled, no market has trades,
+            or the AMM files cannot be read.
+        amm_source:
+          type: string
+          enum: [simulated_amm]
+          nullable: true
+          description: |
+            Source marker for `amm_yes_probability`; `null` when no AMM
+            price was available.
+        probability_sources:
+          type: object
+          required: [belief_derived_fields, amm_yes_probability]
+          properties:
+            belief_derived_fields:
+              type: string
+              enum: [belief_split]
+              description: |
+                Existing `yes_probability`, direction, confidence, and
+                stance percentages remain derived from the final belief
+                split.
+            amm_yes_probability:
+              type: string
+              enum: [simulated_amm]
+              nullable: true
+              description: |
+                Source for `amm_yes_probability`; `null` when no AMM price
+                was available.
         suggested_market_title:
           type: string
           description: |

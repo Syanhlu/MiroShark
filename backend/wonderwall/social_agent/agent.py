@@ -186,8 +186,10 @@ class SocialAgent(ChatAgent):
         # Inject OpenRouter metadata per-call so each generation is tagged.
         # Structured for Langfuse: `user` becomes the Langfuse sessionId,
         # `metadata` lands on the trace, `tags` powers the filter sidebar.
+        # OPENAI_API_BASE_URL is set by the simulation runner to the effective
+        # Wonderwall slot base URL.
         base_url = _os.environ.get('OPENAI_API_BASE_URL', '')
-        if 'openrouter' in base_url:
+        if 'openrouter' in (base_url or '').lower():
             try:
                 sim_id = _os.environ.get('MIROSHARK_SIMULATION_ID', '') or ''
                 run_id = _os.environ.get('MIROSHARK_RUN_ID', '') or ''

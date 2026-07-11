@@ -11,14 +11,30 @@ Beliefs update heuristically after each round based on:
 - Posts the agent read (weighted by trust in author)
 - Engagement received on own posts (social reinforcement)
 - Novel arguments encountered (larger impact than repeated ones)
+
+Stance judging can use a batched LLM judge before falling back to the keyword
+heuristic in ``_estimate_stance``:
+- STANCE_JUDGE_ENABLED: defaults to "true"; set to "false", "0", "no", or
+  "off" to force keyword fallback.
+- STANCE_JUDGE_MODEL: defaults to empty; when set, overrides the default LLM
+  model for stance judging only.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
+import logging
+import math
+import os
 import random
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
+
+logger = logging.getLogger(__name__)
+
+_STANCE_JUDGE_CACHE: Dict[str, Optional[float]] = {}
 
 
 @dataclass
@@ -81,6 +97,7 @@ class BeliefState:
         posts_seen: List[Dict[str, Any]],
         own_engagement: Dict[str, Any],
         round_num: int,
+        precomputed_stances: Optional[Dict[str, Optional[float]]] = None,
     ) -> Dict[str, float]:
         """Update beliefs based on what happened in a round.
 
@@ -90,6 +107,8 @@ class BeliefState:
             own_engagement: Dict with keys ``likes_received``, ``dislikes_received``
                 for posts the agent created this round.
             round_num: Current round number (used for decay).
+            precomputed_stances: Optional mapping of post text hash to stance,
+                produced by the batched round-level LLM judge.
 
         Returns:
             Dict mapping topic → position delta for this round.
@@ -112,8 +131,12 @@ class BeliefState:
                 to_remove = list(self.exposure_history)[:500]
                 self.exposure_history -= set(to_remove)
 
-            # Estimate post stance from simple sentiment heuristic
-            post_stance = _estimate_stance(content)
+            # Prefer the round-level LLM judge score; keep keyword fallback.
+            stance_key = _stance_cache_key(content)
+            if precomputed_stances is not None and stance_key in precomputed_stances:
+                post_stance = precomputed_stances[stance_key]
+            else:
+                post_stance = _estimate_stance(content)
             if post_stance is None:
                 continue
 
@@ -292,6 +315,193 @@ def clear_belief_context(agent):
 
 
 # ── Private helpers ─────────────────────────────────────────────
+
+def estimate_stances_for_posts(
+    contents: List[str],
+    topic_context: str,
+) -> Dict[str, Optional[float]]:
+    """Return stance scores for a round's post contents keyed by text hash.
+
+    One LLM call scores all uncached unique texts when enabled. Any whole-call
+    or per-item failure falls back to ``_estimate_stance`` for affected texts.
+    """
+    if not contents:
+        return {}
+
+    requested: Dict[str, str] = {}
+    for content in contents:
+        if not isinstance(content, str) or not content.strip():
+            continue
+        key = _stance_cache_key(content)
+        requested.setdefault(key, content)
+
+    if not requested:
+        return {}
+
+    results: Dict[str, Optional[float]] = {}
+    uncached: List[tuple[str, str]] = []
+    for key, content in requested.items():
+        if key in _STANCE_JUDGE_CACHE:
+            results[key] = _STANCE_JUDGE_CACHE[key]
+        else:
+            uncached.append((key, content))
+
+    if not uncached:
+        return results
+
+    if not _stance_judge_enabled():
+        logger.info(
+            "Stance judge disabled; using keyword fallback for %d posts",
+            len(uncached),
+        )
+        for key, content in uncached:
+            results[key] = _cache_keyword_stance(key, content)
+        return results
+
+    judged: Dict[int, Optional[float]] = {}
+    try:
+        judged = _call_stance_judge(
+            [content for _, content in uncached],
+            topic_context=topic_context,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Batched stance judge failed for %d posts; using keyword fallback: %s",
+            len(uncached),
+            exc,
+        )
+
+    for idx, (key, content) in enumerate(uncached):
+        if idx in judged and judged[idx] is not None:
+            stance = _clamp_stance(judged[idx])
+            if stance is not None:
+                _STANCE_JUDGE_CACHE[key] = stance
+                results[key] = stance
+                continue
+
+        logger.warning(
+            "Stance judge missing or invalid index %s; using keyword fallback",
+            idx,
+        )
+        results[key] = _cache_keyword_stance(key, content)
+
+    return results
+
+
+def _call_stance_judge(
+    contents: List[str],
+    topic_context: str,
+) -> Dict[int, Optional[float]]:
+    from app.utils.llm_client import create_llm_client
+
+    judge_model = os.environ.get("STANCE_JUDGE_MODEL", "").strip()
+    llm = create_llm_client(model=judge_model or None)
+    numbered_posts = "\n".join(
+        f"{idx}. {_truncate_for_stance_prompt(content)}"
+        for idx, content in enumerate(contents)
+    )
+    result = llm.chat(
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a language-agnostic stance judge. Posts may be in "
+                    "Vietnamese, English, or any language. Judge each post's "
+                    "stance toward the supplied simulation topic/question "
+                    "regardless of language. Return strict JSON only: an array "
+                    "of objects exactly shaped like "
+                    "[{\"i\": <index>, \"stance\": <float -1.0..1.0>}]. "
+                    "Use -1.0 for strongly opposed/negative toward the topic, "
+                    "0.0 for neutral/unclear/mixed, and 1.0 for strongly "
+                    "supportive/positive toward the topic. No markdown, no "
+                    "commentary."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Simulation topic/question:\n"
+                    f"{topic_context or 'General simulation topic'}\n\n"
+                    "Posts to judge (indexes are authoritative):\n"
+                    f"{numbered_posts}\n\n"
+                    "Return strict JSON array only."
+                ),
+            },
+        ],
+        temperature=0.0,
+        max_tokens=max(200, min(4000, 80 * max(len(contents), 1))),
+    )
+
+    parsed = _parse_stance_judge_response(result)
+    judged: Dict[int, Optional[float]] = {}
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        try:
+            idx = int(item.get("i"))
+        except (TypeError, ValueError):
+            continue
+        if idx < 0 or idx >= len(contents):
+            continue
+        judged[idx] = _clamp_stance(item.get("stance"))
+    return judged
+
+
+def _parse_stance_judge_response(result: Any) -> List[Any]:
+    if not isinstance(result, str) or not result.strip():
+        raise ValueError("empty stance judge response")
+
+    cleaned = result.strip()
+    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\n?```\s*$", "", cleaned)
+    cleaned = cleaned.strip()
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        match = re.search(r"\[[\s\S]*\]", cleaned)
+        if not match:
+            raise
+        parsed = json.loads(match.group())
+
+    if not isinstance(parsed, list):
+        raise ValueError("stance judge response was not a JSON array")
+    return parsed
+
+
+def _stance_cache_key(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def _stance_judge_enabled() -> bool:
+    value = os.environ.get("STANCE_JUDGE_ENABLED", "true").strip().lower()
+    return value not in {"0", "false", "no", "off"}
+
+
+def _cache_keyword_stance(key: str, content: str) -> Optional[float]:
+    stance = _clamp_stance(_estimate_stance(content))
+    _STANCE_JUDGE_CACHE[key] = stance
+    return stance
+
+
+def _clamp_stance(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        stance = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(stance):
+        return None
+    return max(-1.0, min(1.0, stance))
+
+
+def _truncate_for_stance_prompt(content: str, limit: int = 2000) -> str:
+    text = content.strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "..."
+
 
 def _estimate_stance(content: str) -> Optional[float]:
     """Quick heuristic stance estimation from post content.

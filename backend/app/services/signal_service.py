@@ -37,8 +37,11 @@ Design notes
   missing / ``"N/A"``) → ``high-risk``. The default-to-high posture is
   deliberate — a quant tool that gets a signal with unknown quality
   should treat it cautiously, not optimistically.
-* **Pure stdlib.** ``datetime`` for the ISO-8601 timestamp; no other
-  imports. Same dependency posture as every other export module.
+* **Best-effort AMM read.** When the summary carries a
+  ``simulation_id``, the payload also includes the final YES price from
+  the simulated Polymarket AMM if a traded market DB is readable. The
+  belief-derived direction/confidence fields remain unchanged; the AMM
+  probability is exposed separately and falls back to ``null``.
 """
 
 from __future__ import annotations
@@ -46,6 +49,7 @@ from __future__ import annotations
 from typing import Any, Literal, Optional
 
 from ..utils.timeutils import utc_iso8601 as _iso_utc_now
+from . import polymarket_amm
 
 
 # ── Bucket thresholds ─────────────────────────────────────────────────────
@@ -80,6 +84,14 @@ _RISK_TIER_BY_HEALTH: dict[str, _RiskTier] = {
     "poor": "high-risk",
 }
 _DEFAULT_RISK_TIER: _RiskTier = "high-risk"
+
+
+def _probability_sources(amm_source: Optional[str]) -> dict[str, Optional[str]]:
+    """Identify which probability-like fields came from which source."""
+    return {
+        "belief_derived_fields": "belief_split",
+        "amm_yes_probability": amm_source,
+    }
 
 
 def _coerce_pct(value: Any) -> Optional[float]:
@@ -191,6 +203,12 @@ def compute_signal(summary: Any) -> Optional[dict[str, Any]]:
         "neutral_pct": <pct>,
         "bearish_pct": <pct>,
         "quality_health": <str | "N/A">,
+        "amm_yes_probability": <0.0 .. 1.0 | None>,
+        "amm_source": "simulated_amm" | None,
+        "probability_sources": {
+          "belief_derived_fields": "belief_split",
+          "amm_yes_probability": "simulated_amm" | None
+        },
         "signal_generated_at": "YYYY-MM-DDTHH:MM:SSZ"
       }
     """
@@ -221,6 +239,12 @@ def compute_signal(summary: Any) -> Optional[dict[str, Any]]:
         "neutral": neutral,
         "bearish": bearish,
     }[leader_key]
+    amm_yes_probability = polymarket_amm.load_final_amm_yes_probability(
+        summary.get("simulation_id")
+    )
+    amm_source = (
+        polymarket_amm.AMM_SOURCE if amm_yes_probability is not None else None
+    )
 
     return {
         "schema_version": "1",
@@ -231,5 +255,8 @@ def compute_signal(summary: Any) -> Optional[dict[str, Any]]:
         "neutral_pct": round(neutral, 1),
         "bearish_pct": round(bearish, 1),
         "quality_health": quality_health,
+        "amm_yes_probability": amm_yes_probability,
+        "amm_source": amm_source,
+        "probability_sources": _probability_sources(amm_source),
         "signal_generated_at": _iso_utc_now(),
     }

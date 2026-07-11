@@ -15,13 +15,19 @@ keeping the upstream framework untouched.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from wonderwall.social_agent.belief_state import BeliefState
+from wonderwall.social_agent.belief_state import (
+    BeliefState,
+    estimate_stances_for_posts,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -167,8 +173,9 @@ class SimulationTrajectory:
 class RoundAnalyzer:
     """Analyzes a simulation round and produces belief updates + feedback."""
 
-    def __init__(self, topics: List[str]):
+    def __init__(self, topics: List[str], simulation_topic: Optional[str] = None):
         self.topics = topics
+        self.topic_context = (simulation_topic or "").strip() or "; ".join(topics)
 
     def analyze_round(
         self,
@@ -249,6 +256,25 @@ class RoundAnalyzer:
                 if not posts_seen_by_agent.get(aid) and action_posts.get(aid):
                     posts_seen_by_agent[aid] = action_posts[aid]
 
+        round_stance_contents = [
+            content
+            for posts_seen in posts_seen_by_agent.values()
+            for post in posts_seen
+            for content in [post.get("content", "")]
+            if isinstance(content, str) and content.strip()
+        ]
+        try:
+            precomputed_stances = estimate_stances_for_posts(
+                round_stance_contents,
+                self.topic_context,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Round stance precompute failed; using keyword fallback: %s",
+                exc,
+            )
+            precomputed_stances = {}
+
         # Update beliefs for each active agent
         for agent_id in active_agent_ids:
             if agent_id not in belief_states:
@@ -258,7 +284,12 @@ class RoundAnalyzer:
             posts_seen = posts_seen_by_agent.get(agent_id, [])
             own_engagement = engagement_by_agent.get(agent_id, {})
 
-            deltas = bs.update_from_round(posts_seen, own_engagement, round_num)
+            deltas = bs.update_from_round(
+                posts_seen,
+                own_engagement,
+                round_num,
+                precomputed_stances=precomputed_stances,
+            )
 
             snapshot.belief_positions[agent_id] = dict(bs.positions)
             if deltas:

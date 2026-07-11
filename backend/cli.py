@@ -395,6 +395,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[list] = None) -> int:
+    # Windows consoles default to cp1252, which can't encode the arrows/em
+    # dashes in help text and API output — force UTF-8 where supported.
+    if sys.platform == "win32":
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.reconfigure(encoding="utf-8")
+            except (AttributeError, ValueError):
+                pass
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

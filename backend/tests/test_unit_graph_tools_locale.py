@@ -67,6 +67,12 @@ def test_roleplay_prompt_is_localized_for_each_locale():
     )
     assert "personnage" in fr, fr[:120]
 
+    vi = get_prompt(
+        "graph_tools.interview_single_agent_roleplay", "vi",
+        profile_desc="Name: X", combined_prompt="Q?",
+    )
+    assert "nhân vật" in vi, vi[:120]
+
 
 def test_fallback_interview_threads_locale_into_thread_pool_worker():
     """The worker must see the user's locale even though it runs in a thread.

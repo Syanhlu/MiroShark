@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import re
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -71,6 +72,56 @@ def _summary(
     }
 
 
+def _write_amm_db(
+    root: Path,
+    sim_id: str,
+    *,
+    reserve_a: float = 40.0,
+    reserve_b: float = 60.0,
+    trade_count: int = 1,
+) -> Path:
+    """Create the minimal Polymarket SQLite shape the AMM reader needs."""
+    sim_dir = root / sim_id
+    sim_dir.mkdir(parents=True, exist_ok=True)
+    db_path = sim_dir / "polymarket_simulation.db"
+    with sqlite3.connect(db_path) as con:
+        con.execute(
+            "CREATE TABLE market ("
+            "market_id INTEGER PRIMARY KEY, "
+            "question TEXT, "
+            "outcome_a TEXT, "
+            "outcome_b TEXT, "
+            "reserve_a REAL, "
+            "reserve_b REAL, "
+            "resolved INTEGER, "
+            "winning_outcome TEXT, "
+            "created_at TEXT)"
+        )
+        con.execute(
+            "CREATE TABLE trade (trade_id INTEGER PRIMARY KEY, market_id INTEGER)"
+        )
+        con.execute(
+            "INSERT INTO market VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                1,
+                "Will Aave pass?",
+                "YES",
+                "NO",
+                reserve_a,
+                reserve_b,
+                0,
+                None,
+                "2026-06-08T12:00:00Z",
+            ),
+        )
+        for trade_id in range(1, trade_count + 1):
+            con.execute(
+                "INSERT INTO trade VALUES (?, ?)",
+                (trade_id, 1),
+            )
+    return db_path
+
+
 # ── Property 1 — documented payload shape ─────────────────────────────────
 
 
@@ -92,6 +143,9 @@ def test_payload_has_documented_keys():
         "neutral_pct",
         "bearish_pct",
         "quality_health",
+        "amm_yes_probability",
+        "amm_source",
+        "probability_sources",
         "suggested_market_title",
         "source_sim_id",
         "polymarket_generated_at",
@@ -110,6 +164,52 @@ def test_payload_is_json_serializable():
     parsed = json.loads(blob)
     assert parsed["yes_probability"] == payload["yes_probability"]
     assert parsed["direction"] == payload["direction"]
+
+
+def test_payload_includes_null_amm_fields_when_market_missing(monkeypatch, tmp_path):
+    from app.config import Config
+    from app.services.polymarket_service import compute_polymarket
+
+    monkeypatch.setattr(Config, "WONDERWALL_SIMULATION_DATA_DIR", str(tmp_path))
+    payload = compute_polymarket(_summary(), "sim-test-0001")
+    assert payload is not None
+    assert payload["amm_yes_probability"] is None
+    assert payload["amm_source"] is None
+    assert payload["probability_sources"] == {
+        "belief_derived_fields": "belief_split",
+        "amm_yes_probability": None,
+    }
+
+
+def test_payload_reads_final_amm_yes_probability_from_explicit_sim_id(
+    monkeypatch, tmp_path
+):
+    from app.config import Config
+    from app.services.polymarket_service import compute_polymarket
+
+    monkeypatch.setattr(Config, "WONDERWALL_SIMULATION_DATA_DIR", str(tmp_path))
+    _write_amm_db(tmp_path, "sim-amm-explicit", reserve_a=20.0, reserve_b=80.0)
+
+    payload = compute_polymarket(_summary(), "sim-amm-explicit")
+    assert payload is not None
+    assert payload["yes_probability"] == pytest.approx(0.62, abs=1e-4)
+    assert payload["amm_yes_probability"] == pytest.approx(0.8, abs=1e-4)
+    assert payload["amm_source"] == "simulated_amm"
+    assert payload["probability_sources"]["belief_derived_fields"] == "belief_split"
+    assert payload["probability_sources"]["amm_yes_probability"] == "simulated_amm"
+
+
+def test_payload_leaves_amm_null_when_market_has_no_trades(monkeypatch, tmp_path):
+    from app.config import Config
+    from app.services.polymarket_service import compute_polymarket
+
+    monkeypatch.setattr(Config, "WONDERWALL_SIMULATION_DATA_DIR", str(tmp_path))
+    _write_amm_db(tmp_path, "sim-no-trades", trade_count=0)
+
+    payload = compute_polymarket(_summary(), "sim-no-trades")
+    assert payload is not None
+    assert payload["amm_yes_probability"] is None
+    assert payload["amm_source"] is None
 
 
 def test_simulation_id_is_echoed_in_both_fields():
