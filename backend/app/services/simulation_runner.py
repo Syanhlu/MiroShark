@@ -374,6 +374,18 @@ class SimulationRunner:
             if platform == "parallel" and enable_cross_platform:
                 cmd.append("--cross-platform")
 
+            # TikTok has no actions.jsonl event pipeline (unlike
+            # threads/facebook/polymarket, whose scripts write a
+            # simulation_end event that _read_action_log() picks up to flip
+            # runner_status early). Without --no-wait, run_tiktok_simulation.py
+            # enters its interactive command-waiting loop after the round loop
+            # finishes and never exits on its own, so _monitor_simulation()'s
+            # `while process.poll() is None` loop (and therefore /run-status)
+            # waits forever. Pass --no-wait so the process actually exits and
+            # the existing exit-code completion path (below) applies.
+            if platform == "tiktok":
+                cmd.append("--no-wait")
+
             # Create main log file (append if resuming, truncate if fresh)
             main_log_path = os.path.join(sim_dir, "simulation.log")
             log_mode = 'a' if start_round > 0 else 'w'
